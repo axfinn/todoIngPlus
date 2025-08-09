@@ -1,0 +1,56 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: todoing_mongodb_dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_dev:/data/db
+
+  backend:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile
+      args: {}
+    container_name: todoing_backend_go_dev
+    restart: unless-stopped
+    environment:
+      PORT: "5001"
+      MONGO_URI: mongodb://mongodb:27017/todoing
+      JWT_SECRET: changeme
+      DEFAULT_USERNAME: admin
+      DEFAULT_PASSWORD: admin123
+      DEFAULT_EMAIL: admin@example.com
+      ENABLE_CAPTCHA: "true"
+      ENABLE_EMAIL_VERIFICATION: "true"
+      DISABLE_REGISTRATION: "false"
+      EMAIL_HOST: smtp.exmail.qq.com
+      EMAIL_PORT: "465"
+      EMAIL_SECURE: "true"
+      EMAIL_USER: todoIng@jaxiu.cn
+      EMAIL_PASS: oHBF9bN386YpKsw2
+      EMAIL_FROM: todoIng@jaxiu.cn
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongodb
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_ENABLE_CAPTCHA: "true"
+        VITE_ENABLE_EMAIL_VERIFICATION: "true"
+        VITE_DISABLE_REGISTRATION: "false"
+    container_name: todoing_frontend_go_dev
+    restart: unless-stopped
+    # 运行阶段这些变量不会再被 Vite 读取（已在构建期内联），如需运行期可见配置可改为调用后端配置接口
+    ports:
+      - "81:81"
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data_dev:
