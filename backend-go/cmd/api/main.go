@@ -223,7 +223,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "5001"
+		port = "5005"
 	}
 	server := &http.Server{Addr: ":" + port, Handler: handler}
 	observability.LogInfo("HTTP server configured on port %s", port)
