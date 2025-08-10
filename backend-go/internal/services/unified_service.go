@@ -104,13 +104,18 @@ func (s *UnifiedService) GetUpcoming(ctx context.Context, userID primitive.Objec
 
     var wg sync.WaitGroup
     wg.Add(4)
-    go func() { defer wg.Done(); days := hours / 24; if days < 1 { days = 1 }; events, eventsErr = eventSvc.GetUpcomingEvents(ctx, userID, days) }()
-    go func() { defer wg.Done(); reminders, remindersErr = reminderSvc.GetUpcomingReminders(ctx, userID, hours) }()
-    go func() { defer wg.Done(); priorityTasks, priorityErr = taskSortSvc.GetPriorityTasks(ctx, userID) }()
-    go func() {
+    go func() { // upcoming events
+        defer wg.Done(); days := hours / 24; if days < 1 { days = 1 }; events, eventsErr = eventSvc.GetUpcomingEvents(ctx, userID, days) }()
+    go func() { // upcoming reminders
+        defer wg.Done(); reminders, remindersErr = reminderSvc.GetUpcomingReminders(ctx, userID, hours) }()
+    go func() { // priority tasks (already filters by createdBy)
+        defer wg.Done(); priorityTasks, priorityErr = taskSortSvc.GetPriorityTasks(ctx, userID) }()
+    go func() { // normal tasks with deadline or scheduledDate in window
         defer wg.Done()
         tasksColl := s.db.Collection("tasks")
-        filter := bson.M{"user_id": userID, "$or": []bson.M{{"deadline": bson.M{"$gte": now, "$lte": end}}, {"scheduledDate": bson.M{"$gte": now, "$lte": end}}}}
+        // BUGFIX: 原先错误使用 user_id 字段，Task 文档所有者字段是 createdBy(字符串形式的 ObjectID)
+        activeStatuses := []string{"pending", "in_progress", "todo", "doing"}
+        filter := bson.M{"createdBy": userID.Hex(), "status": bson.M{"$in": activeStatuses}, "$or": []bson.M{{"deadline": bson.M{"$gte": now, "$lte": end}}, {"scheduledDate": bson.M{"$gte": now, "$lte": end}}}}
         opts := options.Find().SetProjection(bson.M{"title":1, "deadline":1, "scheduledDate":1}).SetSort(bson.D{{Key: "deadline", Value: 1}})
         cur, err := tasksColl.Find(ctx, filter, opts); if err != nil { normalTasksErr = err; return }
         defer cur.Close(ctx)
@@ -150,13 +155,13 @@ func (s *UnifiedService) GetCalendar(ctx context.Context, userID primitive.Objec
         daysMap[dayKey] = append(daysMap[dayKey], models.UnifiedCalendarItem{ID: r.ID.Hex(), Source: "reminder", Title: r.Message, ScheduledAt: r.ReminderAt, Importance: r.Importance, DetailURL: "/reminders"})
     }
 
-    // 任务
+    // 任务 (兼容 createdBy 字符串 / 未来可能的 user_id ObjectID)
     tasksColl := s.db.Collection("tasks")
-    filter := bson.M{"user_id": userID, "$or": []bson.M{
-        {"deadline": bson.M{"$gte": start, "$lt": end}},
-        {"scheduledDate": bson.M{"$gte": start, "$lt": end}},
+    tFilter := bson.M{"$and": []bson.M{
+        {"$or": []bson.M{{"createdBy": userID.Hex()}, {"user_id": userID}}},
+        {"$or": []bson.M{{"deadline": bson.M{"$gte": start, "$lt": end}}, {"scheduledDate": bson.M{"$gte": start, "$lt": end}}}},
     }}
-    cur, err := tasksColl.Find(ctx, filter, options.Find().SetProjection(bson.M{"title":1, "deadline":1, "scheduledDate":1}))
+    cur, err := tasksColl.Find(ctx, tFilter, options.Find().SetProjection(bson.M{"title":1, "deadline":1, "scheduledDate":1}))
     if err == nil {
         defer cur.Close(ctx)
         for cur.Next(ctx) {
