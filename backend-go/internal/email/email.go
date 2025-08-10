@@ -141,7 +141,9 @@ func SendGeneric(to, subject, htmlBody string) error {
 	fmt.Sscanf(port, "%d", &p)
 	d := mail.NewDialer(host, p, user, pass)
 	m := mail.NewMessage()
-	if from == "" { from = user }
+	if from == "" {
+		from = user
+	}
 	m.SetHeader("From", from)
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", subject)

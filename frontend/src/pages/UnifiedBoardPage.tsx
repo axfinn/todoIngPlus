@@ -156,18 +156,17 @@ const UnifiedBoardPage: React.FC = () => {
 
   return (
     <div className="container py-4 panel-wrap">
-      <div className="panel-overlay" />
       <div className="panel-content">
       <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
         <h2 className="mb-0">{t('unified.title')}</h2>
         <div className="ms-auto d-flex flex-wrap gap-2 align-items-center">
-          <div className="small text-muted" title={`Server offset ≈ ${serverOffset}ms (client-server)`}>
+          <div className="small text-muted" title={`${t('unified.serverOffset')} ≈ ${serverOffset}ms (client-server)`}>
             <i className="bi bi-clock-history me-1" />Δ {serverOffset >=0? '+':''}{Math.round(serverOffset/1000)}s
           </div>
           {stats && (
             <div className="small text-muted">
               <i className="bi bi-bar-chart me-1"/>
-              tasks {stats.tasks} / events {stats.events} / reminders {stats.reminders}
+              {t('unified.stats', { tasks: stats.tasks, events: stats.events, reminders: stats.reminders })}
             </div>
           )}
           <div className="btn-group btn-group-sm" role="group" aria-label="Hours shortcuts">
@@ -177,26 +176,26 @@ const UnifiedBoardPage: React.FC = () => {
           </div>
           <div className="btn-group btn-group-sm" role="group" aria-label="Severity shortcuts">
             {severityThresholds.map(th => (
-              <button key={th} type="button" className={`btn ${filterState.minSeverity===th? 'btn-primary':'btn-outline-secondary'}`} onClick={()=>applySeverityShortcut(th)} title={`score ≥ ${th}`}>{th===0? 'ALL': th}</button>
+              <button key={th} type="button" className={`btn ${filterState.minSeverity===th? 'btn-primary':'btn-outline-secondary'}`} onClick={()=>applySeverityShortcut(th)} title={`score ≥ ${th}`}>{th===0? t('unified.allSeverity'): th}</button>
             ))}
           </div>
-          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=>setGroupByDay(g=>!g)} title="Group by day">
-            <i className="bi bi-calendar3 me-1"/>{groupByDay? 'Ungroup':'Group'}
+          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=>setGroupByDay(g=>!g)} title={t('unified.group') + ' / ' + t('unified.ungroup')}>
+            <i className="bi bi-calendar3 me-1"/>{groupByDay? t('unified.ungroup'): t('unified.group')}
           </button>
-          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=>setCompact(c=>!c)} title="Compact mode">
-            <i className="bi bi-aspect-ratio me-1"/>{compact? 'Normal':'Compact'}
+          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=>setCompact(c=>!c)} title={t('unified.compact') + ' / ' + t('unified.normal')}>
+            <i className="bi bi-aspect-ratio me-1"/>{compact? t('unified.normal'): t('unified.compact')}
           </button>
           <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=>setShowDebug(d=>!d)} title="Debug panel">
-            <i className="bi bi-bug me-1"/>{showDebug? 'Debug-':'Debug+'}
+            <i className="bi bi-bug me-1"/>{showDebug? t('unified.debugOff'): t('unified.debugOn')}
           </button>
           <button type="button" className="btn btn-sm btn-outline-primary" onClick={()=>refetch()} disabled={isLoading}>
             <i className={`bi bi-arrow-repeat me-1 ${isLoading? 'spin':''}`}></i>{isLoading? t('common.loading')||'Loading': t('common.refresh')||'Refresh'}
           </button>
-          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={exportCSV} title="Export CSV">
-            <i className="bi bi-download me-1"/>CSV
+          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={exportCSV} title={t('unified.csv')}>
+            <i className="bi bi-download me-1"/>{t('unified.csv')}
           </button>
-          <button type="button" className="btn btn-sm btn-outline-danger" onClick={()=>setFilterState(defaultFilters)} title="Reset filters">
-            <i className="bi bi-x-circle me-1"/>Reset
+          <button type="button" className="btn btn-sm btn-outline-danger" onClick={()=>setFilterState(defaultFilters)} title={t('unified.reset')}>
+            <i className="bi bi-x-circle me-1"/>{t('unified.reset')}
           </button>
         </div>
       </div>
@@ -206,7 +205,7 @@ const UnifiedBoardPage: React.FC = () => {
         <div className="col-auto">
           <div className="card shadow-sm border-0 bg-light small">
             <div className="card-body py-2 px-3">
-              <div className="fw-semibold">Total</div>
+              <div className="fw-semibold">{t('unified.total')}</div>
               <div className="fs-5">{derivedStats.total}</div>
             </div>
           </div>
@@ -214,7 +213,7 @@ const UnifiedBoardPage: React.FC = () => {
         <div className="col-auto">
           <div className="card shadow-sm border-0 bg-light small">
             <div className="card-body py-2 px-3">
-              <div className="fw-semibold text-danger">Overdue</div>
+              <div className="fw-semibold text-danger">{t('unified.overdue')}</div>
               <div className="fs-5">{derivedStats.overdue}</div>
             </div>
           </div>
@@ -222,7 +221,7 @@ const UnifiedBoardPage: React.FC = () => {
         <div className="col-auto">
           <div className="card shadow-sm border-0 bg-light small">
             <div className="card-body py-2 px-3">
-              <div className="fw-semibold text-warning">24h</div>
+              <div className="fw-semibold text-warning">{t('unified.within24h')}</div>
               <div className="fs-5">{derivedStats.within24h}</div>
             </div>
           </div>
@@ -230,7 +229,7 @@ const UnifiedBoardPage: React.FC = () => {
         <div className="col-auto">
           <div className="card shadow-sm border-0 bg-light small">
             <div className="card-body py-2 px-3">
-              <div className="fw-semibold text-primary">Critical</div>
+              <div className="fw-semibold text-primary">{t('unified.critical')}</div>
               <div className="fs-5">{derivedStats.critical}</div>
             </div>
           </div>
@@ -241,15 +240,15 @@ const UnifiedBoardPage: React.FC = () => {
         error={error}
         data={filteredItems}
         emptyHint={<div className="text-muted small p-4 border rounded bg-light">
-          <div className="mb-2">{t('unified.empty')} / No upcoming items.</div>
+          <div className="mb-2">{t('unified.empty')} / {t('unified.noData')}</div>
           <ul className="mb-2">
-            <li>扩大时间窗口 (当前 {filterState.hours}h)</li>
-            <li>检查是否有任务 / 事件 / 提醒未设置时间</li>
-            <li>降低最小严重度 (当前 ≥ {filterState.minSeverity})</li>
+            <li>{t('unified.hintExpandWindow', { hours: filterState.hours })}</li>
+            <li>{t('unified.hintCheckMissingTime')}</li>
+            <li>{t('unified.hintLowerSeverity', { min: filterState.minSeverity })}</li>
           </ul>
           <div className="d-flex gap-2 flex-wrap">
             {[24,72,168, 24*14].map(h=> <button key={h} className="btn btn-sm btn-outline-secondary" onClick={()=>setFilterState(s=>({...s, hours:h}))}>{h<=24? `${h}h`: `${Math.round(h/24)}d`}</button> )}
-            <button className="btn btn-sm btn-outline-danger" onClick={()=>setFilterState(defaultFilters)}>Reset</button>
+            <button className="btn btn-sm btn-outline-danger" onClick={()=>setFilterState(defaultFilters)}>{t('unified.reset')}</button>
           </div>
         </div>}
         skeleton={
@@ -360,7 +359,7 @@ const UnifiedBoardPage: React.FC = () => {
                 ))}
                 {(!isLoading && !error && filteredItems.length===0) && (
                   <tr>
-                    <td colSpan={6} className="text-center text-muted small">No data returned from API. Try increasing hours or remove filters.</td>
+                    <td colSpan={6} className="text-center text-muted small">{t('unified.noData')}</td>
                   </tr>
                 )}
               </tbody>
@@ -378,7 +377,7 @@ const UnifiedBoardPage: React.FC = () => {
       {showDebug && (
         <div className="mt-4">
           <div className="card card-body small">
-            <div className="fw-semibold mb-2">Debug</div>
+            <div className="fw-semibold mb-2">{t('unified.debugOn')}</div>
             <pre className="small mb-0" style={{maxHeight:300, overflow:'auto'}}>{JSON.stringify({queryArgs, filterState, derivedStats, grouped: groupByDay? grouped?.map(g=>({date:g.date, count:g.items.length})): undefined}, null, 2)}</pre>
           </div>
         </div>

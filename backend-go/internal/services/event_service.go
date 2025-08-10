@@ -37,7 +37,7 @@ func NewEventService(db *mongo.Database) *EventService {
 // CreateEvent 创建事件
 func (s *EventService) CreateEvent(ctx context.Context, userID primitive.ObjectID, req models.CreateEventRequest) (*models.Event, error) {
 	now := time.Now()
-	
+
 	event := &models.Event{
 		ID:               primitive.NewObjectID(),
 		UserID:           userID,
@@ -78,7 +78,7 @@ func (s *EventService) CreateEvent(ctx context.Context, userID primitive.ObjectI
 // GetEvent 获取单个事件
 func (s *EventService) GetEvent(ctx context.Context, userID, eventID primitive.ObjectID) (*models.Event, error) {
 	var event models.Event
-	
+
 	filter := bson.M{
 		"_id":     eventID,
 		"user_id": userID,

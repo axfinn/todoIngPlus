@@ -23,6 +23,7 @@ type Event struct {
 	CreatedAt        time.Time              `bson:"created_at" json:"created_at"`
 	UpdatedAt        time.Time              `bson:"updated_at" json:"updated_at"`
 	IsActive         bool                   `bson:"is_active" json:"is_active"`
+	LastTriggeredAt  *time.Time             `bson:"last_triggered_at,omitempty" json:"last_triggered_at,omitempty"` // 系统自动时间线记录最近一次事件开始触发时间
 }
 
 // CreateEventRequest 创建事件请求
@@ -85,11 +86,11 @@ func (e *Event) GetNextOccurrence(after time.Time) *time.Time {
 	case "yearly":
 		// 年度循环：每年同一天
 		year := after.Year()
-		if after.Month() > baseDate.Month() || 
-		   (after.Month() == baseDate.Month() && after.Day() >= baseDate.Day()) {
+		if after.Month() > baseDate.Month() ||
+			(after.Month() == baseDate.Month() && after.Day() >= baseDate.Day()) {
 			year++
 		}
-		next = time.Date(year, baseDate.Month(), baseDate.Day(), 
+		next = time.Date(year, baseDate.Month(), baseDate.Day(),
 			baseDate.Hour(), baseDate.Minute(), baseDate.Second(), 0, baseDate.Location())
 
 	case "monthly":
@@ -102,7 +103,7 @@ func (e *Event) GetNextOccurrence(after time.Time) *time.Time {
 				month = 1
 			}
 		}
-		next = time.Date(year, month, baseDate.Day(), 
+		next = time.Date(year, month, baseDate.Day(),
 			baseDate.Hour(), baseDate.Minute(), baseDate.Second(), 0, baseDate.Location())
 
 	case "weekly":
@@ -124,15 +125,15 @@ func (e *Event) GetNextOccurrence(after time.Time) *time.Time {
 func (e *Event) IsUpcoming() bool {
 	now := time.Now()
 	sevenDaysLater := now.AddDate(0, 0, 7)
-	
+
 	if e.RecurrenceType == "none" {
 		return e.EventDate.After(now) && e.EventDate.Before(sevenDaysLater)
 	}
-	
+
 	nextOccurrence := e.GetNextOccurrence(now)
 	if nextOccurrence == nil {
 		return false
 	}
-	
+
 	return nextOccurrence.Before(sevenDaysLater)
 }

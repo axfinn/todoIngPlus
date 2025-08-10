@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../config/api';
 // import { useDispatch } from 'react-redux';
 // import type { AppDispatch } from '../app/store';
 import { useGetUpcomingQuery } from '../features/unified/unifiedApi';
 import SeverityBadge from '../components/SeverityBadge';
+import { NowContext } from '../App';
+import EventTimelineModal from '../components/EventTimelineModal';
 import useFocusHighlight from '../hooks/useFocusHighlight';
 import DataState from '../components/DataState';
 
@@ -36,7 +39,20 @@ interface CreateEventForm {
 }
 
 const EventsPage: React.FC = () => {
+  // 内联倒计时组件（避免新文件）
+  const EventCountdown: React.FC<{ target: string }> = ({ target }) => {
+    const nowTs = useContext(NowContext); // 全局 1s tick
+    if (!target) return null; const targetMs = new Date(target).getTime(); if (isNaN(targetMs)) return null;
+    let diff = targetMs - nowTs; const past = diff < 0; diff = Math.abs(diff);
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    const label = days > 0 ? `${days}d ${hours}h` : hours > 0 ? `${hours}h ${mins}m` : `${mins}m ${secs}s`;
+    return <div className={"small " + (past ? 'text-danger' : 'text-secondary')}><i className="bi bi-hourglass-split me-1" />{past ? `已开始 ${label}` : `倒计时 ${label}`}</div>;
+  };
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<EventItem[]>([]);
   // const dispatch: AppDispatch = useDispatch(); // 事件后续若需全局状态再启用
   // 预热 unified 缓存（不单独展示列表）使用 RTK Query 自动缓存
@@ -44,6 +60,8 @@ const EventsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [timelineEventId, setTimelineEventId] = useState<string | null>(null);
+  const [timelineEventTitle, setTimelineEventTitle] = useState<string>('');
 
   // 使用通用 focus 高亮钩子
   useFocusHighlight({ attrName: 'data-event-id' });
@@ -70,7 +88,7 @@ const EventsPage: React.FC = () => {
     if (draft.importance_level < 1 || draft.importance_level > 5) errs.importance_level = t('events.validation.importanceRange', 'Importance 1-5');
     return errs;
   };
-  const isFormValid = useMemo(()=> Object.keys(formErrors).length===0, [formErrors]);
+  const isFormValid = useMemo(()=> Object.keys(validate(formData)).length===0, [formData]);
 
   // 获取事件列表
   const fetchEvents = async () => {
@@ -222,7 +240,6 @@ const EventsPage: React.FC = () => {
 
   return (
     <div className="container-fluid mt-4 panel-wrap">
-      <div className="panel-overlay" />
       <div className="panel-content">
       <div className="row mb-4">
         <div className="col-12 d-flex justify-content-between align-items-center">
@@ -244,7 +261,7 @@ const EventsPage: React.FC = () => {
                 <i className="bi bi-search"></i>
               </button>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+            <button className="btn btn-primary" onClick={() => { console.log('[DEBUG] Create Event button clicked'); setShowCreateModal(true); }}>
               <i className="bi bi-plus-lg me-1"></i>
               {t('events.create') || 'Create'}
             </button>
@@ -268,9 +285,9 @@ const EventsPage: React.FC = () => {
       >
         {(list) => (
           <div className="row">
-            {list.map((event) => (
+      {list.map((event) => (
               <div key={event.id} data-event-id={event.id} className="col-lg-6 mb-3">
-                <div className="card border h-100">
+        <div className="card border h-100 event-card" role="button" onClick={(e)=> { if(!(e.target as HTMLElement).closest('.dropdown')) navigate(`/events/${event.id}`); }}>
                   <div className="card-body d-flex flex-column">
                     <h6 className="card-title d-flex justify-content-between align-items-start">
                       <span className="me-2 flex-grow-1 text-truncate" title={event.title}>{event.title}</span>
@@ -286,6 +303,11 @@ const EventsPage: React.FC = () => {
                                 <i className="bi bi-trash me-2"></i>{t('common.delete')}
                               </button>
                             </li>
+                            <li>
+                              <button className="dropdown-item" onClick={() => { setTimelineEventId(event.id); setTimelineEventTitle(event.title); }}>
+                                <i className="bi bi-clock-history me-2"></i>时间线 / 评论
+                              </button>
+                            </li>
                           </ul>
                         </div>
                       </div>
@@ -293,6 +315,8 @@ const EventsPage: React.FC = () => {
                     {event.description && <p className="card-text small mb-2">{event.description}</p>}
                     <div className="small text-muted mt-auto">
                       <div><i className="bi bi-calendar me-1"></i>{formatDateTime(event.event_date)}</div>
+                      {/* 倒计时显示 */}
+                      <EventCountdown target={event.event_date} />
                       {event.location && (
                         <div><i className="bi bi-geo-alt me-1"></i>{event.location}</div>
                       )}
@@ -493,6 +517,13 @@ const EventsPage: React.FC = () => {
         </div>
       )}
       </div>{/* panel-content */}
+      {timelineEventId && (
+        <EventTimelineModal
+          eventId={timelineEventId}
+          eventTitle={timelineEventTitle}
+          onClose={() => { setTimelineEventId(null); setTimelineEventTitle(''); }}
+        />
+      )}
     </div>
   );
 };

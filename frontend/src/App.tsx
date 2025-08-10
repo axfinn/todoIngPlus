@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -11,9 +11,27 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/ReportsPage';
 import EventsPage from './pages/EventsPage';
+import EventDetailPage from './pages/EventDetailPage';
 import RemindersPage from './pages/RemindersPage';
 import UnifiedBoardPage from './pages/UnifiedBoardPage';
 import ProtectedRoute from './components/ProtectedRoute';
+
+// 全局 now context: 统一 1s tick，避免多组件各自 setInterval 造成过度重绘（配合 backdrop-filter 会闪烁）
+export const NowContext = React.createContext<number>(Date.now());
+const NowProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
+  const [now, setNow] = useState(Date.now());
+  const rafRef = useRef<number>();
+  useEffect(()=>{
+    let last = performance.now();
+    const loop = (ts: number) => {
+      if (ts - last >= 1000) { last = ts; setNow(Date.now()); }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return ()=> { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  },[]);
+  return <NowContext.Provider value={now}>{children}</NowContext.Provider>;
+};
 
 const App: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -23,35 +41,79 @@ const App: React.FC = () => {
   const [githubStats, setGithubStats] = useState({ stars: 0, forks: 0 });
   const [isGitHubLoading, setIsGitHubLoading] = useState(false);
   const [githubError, setGithubError] = useState(false);
-  const [backgroundImage, setBackgroundImage] = useState('');
-  // UI 主题增强：背景模糊 & 面板蒙版开关（持久化）
-  const [blurEnabled, setBlurEnabled] = useState<boolean>(() => {
-    const v = localStorage.getItem('ui.blurEnabled');
-    return v === null ? true : v === 'true';
-  });
-  const [panelOverlayEnabled, setPanelOverlayEnabled] = useState<boolean>(() => {
-    const v = localStorage.getItem('ui.panelOverlayEnabled');
-    return v === null ? true : v === 'true';
-  });
-  const [debugHitbox, setDebugHitbox] = useState<boolean>(false);
-
-  // 背景图片数组
-  const backgroundImages = [
-    'https://picsum.photos/1920/1080?random=1',
-    'https://picsum.photos/1920/1080?random=2',
-    'https://picsum.photos/1920/1080?random=3'
-  ];
-
-  // 设置随机背景图片
-  useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * backgroundImages.length);
-    setBackgroundImage(backgroundImages[randomIndex]);
+  // 背景图（纯展示用，不影响交互，放置在模糊层）
+  const [bgUrl, setBgUrl] = useState<string>('');
+  useEffect(()=> {
+    const pool = [
+      'https://picsum.photos/1600/900?random=11',
+      'https://picsum.photos/1600/900?random=12',
+      'https://picsum.photos/1600/900?random=13'
+    ];
+    const url = pool[Math.floor(Math.random()*pool.length)];
+    const img = new Image();
+    img.onload = () => setBgUrl(url);
+    img.src = url;
+    console.log('[BG] loading', url);
   }, []);
 
+  // 将背景注入到 body::before
+  useEffect(()=> {
+    if (!bgUrl) return;
+    document.body.classList.add('has-bg');
+    document.body.style.setProperty('--app-bg-image', `url(${bgUrl})`);
+    requestAnimationFrame(()=> document.body.classList.add('bg-visible'));
+    // 诊断：下一帧读取计算样式确认 ::before 是否应用
+    setTimeout(()=> {
+      try {
+        const beforeStyle = (getComputedStyle(document.body, '::before') as any).backgroundImage;
+        if (!beforeStyle || beforeStyle === 'none') {
+          console.warn('[BG] body::before 未检测到背景，启用 fallback 层');
+          const fb = document.getElementById('app-bg-fallback');
+          if (fb) fb.style.opacity = '1';
+        } else {
+          console.log('[BG] body::before 检测到背景:', beforeStyle);
+        }
+      } catch (e) {
+        console.warn('[BG] 检测 body::before 背景异常', e);
+      }
+    }, 100);
+    return () => {
+      document.body.classList.remove('has-bg','bg-visible');
+      document.body.style.removeProperty('--app-bg-image');
+    };
+  }, [bgUrl]);
+
+  // 调试按键：b 切换卡片透明度，便于查看背景
+  useEffect(()=> {
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'b' && (e.metaKey || e.ctrlKey)) {
+        document.body.classList.toggle('debug-bg-transparent');
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
+    return ()=> window.removeEventListener('keydown', keyHandler);
+  }, []);
+
+  useEffect(() => { setCurrentLanguage(i18n.language); }, [i18n.language]);
+
+  // 开发调试：捕获全局点击与可能的遮挡元素
   useEffect(() => {
-    // 初始化时设置当前语言
-    setCurrentLanguage(i18n.language);
-  }, [i18n.language]);
+    if (process.env.NODE_ENV !== 'development') return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const info = target ? `${target.tagName}.${[...target.classList].join('.')}` : 'null';
+      const pe = getComputedStyle(target).pointerEvents;
+      const statusEl = document.getElementById('debug-pointer-status');
+      if (statusEl) statusEl.textContent = `Click -> ${info} pe=${pe}`;
+      // 检测顶部覆盖元素（同一点再探测）
+      const el2 = document.elementFromPoint(e.clientX, e.clientY);
+      if (el2 && el2 !== target && statusEl) {
+        statusEl.textContent += ` topEl=${el2.tagName}.${[...el2.classList].join('.')}`;
+      }
+    };
+    window.addEventListener('click', handler, { capture: true });
+    return () => window.removeEventListener('click', handler, { capture: true } as any);
+  }, []);
 
   useEffect(() => {
     // 获取GitHub项目统计信息
@@ -89,34 +151,45 @@ const App: React.FC = () => {
   };
 
   // 将 body class 与开关同步（面板蒙版快速关闭）
-  useEffect(()=> {
-    if (!panelOverlayEnabled) document.body.classList.add('no-panel-overlay');
-    else document.body.classList.remove('no-panel-overlay');
-  }, [panelOverlayEnabled]);
-
-  useEffect(()=> { localStorage.setItem('ui.blurEnabled', String(blurEnabled)); }, [blurEnabled]);
-  useEffect(()=> { localStorage.setItem('ui.panelOverlayEnabled', String(panelOverlayEnabled)); }, [panelOverlayEnabled]);
-  useEffect(()=> { if (debugHitbox) document.body.classList.add('debug-hitbox'); else document.body.classList.remove('debug-hitbox'); }, [debugHitbox]);
+  // 同步透明度到 CSS 变量
+  // 透明度控制已移除
 
   // 订阅通知（登录后）
   useNotificationStream(isAuthenticated);
   const unread = useSelector((s: RootState)=> s.notifications?.unread || 0);
+  // 背景模糊强度控制
+  const [bgBlur, setBgBlur] = useState<number>(()=> {
+    const v = localStorage.getItem('ui.bgBlur');
+    const n = v? parseInt(v,10): 20;
+    return isNaN(n)? 20: Math.min(60, Math.max(4, n));
+  });
+  useEffect(()=> {
+    document.body.style.setProperty('--app-bg-blur', bgBlur+'px');
+    document.body.style.setProperty('--app-bg-blur-dark', Math.round(bgBlur*1.1)+'px');
+    localStorage.setItem('ui.bgBlur', bgBlur.toString());
+  }, [bgBlur]);
 
   return (
-    <div className={`app-root d-flex flex-column min-vh-100 position-relative ${!blurEnabled ? 'no-blur' : ''}`}>      
+    <NowProvider>
+  <div className="app-root d-flex flex-column min-vh-100 position-relative">
+      {/* Fallback 背景层：当 body::before 不生效时仍可看到背景图 */}
       <div
-        className="app-bg position-fixed top-0 start-0 w-100 h-100"
+        id="app-bg-fallback"
+        className="app-bg-fallback"
         style={{
-          backgroundImage: `url(${backgroundImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed',
-          filter: blurEnabled ? 'none' : 'brightness(0.92)',
-          zIndex: -2
+          backgroundImage: bgUrl ? `url(${bgUrl})` : undefined,
+          opacity: bgUrl ? 1 : 0,
+          transition: 'opacity .7s ease'
         }}
       />
-      {blurEnabled && (<div className="app-bg-overlay position-fixed top-0 start-0 w-100 h-100" />)}
+  {/* 背景通过 body::before 注入，无需额外 DOM */}
+      {/* Debug overlay for pointer interception (可随时移除) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{position:'fixed',bottom:4,right:4,zIndex:3000,fontSize:11,background:'rgba(0,0,0,0.4)',color:'#fff',padding:'2px 6px',borderRadius:4}}>
+          <span id="debug-pointer-status">Ready</span>
+        </div>
+      )}
+  {/* 背景已简化为纯色，去除 overlay */}
       <header>
         <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
           <div className="container">
@@ -183,21 +256,28 @@ const App: React.FC = () => {
                 )}
               </ul>
               <ul className="navbar-nav mb-2 mb-lg-0 align-items-lg-center">
-                {isAuthenticated && (
-                  <li className="nav-item me-2">
-                    <div className="btn-group btn-group-sm" role="group" aria-label="UI Toggles">
-                      <button type="button" className={`btn btn-${blurEnabled? 'primary':'outline-primary'}`} onClick={()=> setBlurEnabled(b=>!b)} title={blurEnabled? '关闭背景模糊':'启用背景模糊'}>
-                        <i className="bi bi-brush"></i>
+                {bgUrl && (
+                  <li className="nav-item me-3">
+                    <div className="dropdown">
+                      <button className="btn btn-outline-light btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <i className="bi bi-image"/> 背景
                       </button>
-                      <button type="button" className={`btn btn-${panelOverlayEnabled? 'primary':'outline-primary'}`} onClick={()=> setPanelOverlayEnabled(p=>!p)} title={panelOverlayEnabled? '关闭面板蒙版':'启用面板蒙版'}>
-                        <i className="bi bi-layers"></i>
-                      </button>
-                      <button type="button" className={`btn btn-${debugHitbox? 'danger':'outline-danger'}`} onClick={()=> setDebugHitbox(d=>!d)} title={debugHitbox? '关闭点击调试描边':'启用点击调试描边'}>
-                        <i className="bi bi-bounding-box"></i>
-                      </button>
+                      <div className="dropdown-menu dropdown-menu-end p-3 small" style={{minWidth:240}}>
+                        <label className="form-label d-flex justify-content-between mb-1">
+                          <span>模糊</span><span className="badge bg-secondary">{bgBlur}px</span>
+                        </label>
+                        <input type="range" min={4} max={60} step={1} value={bgBlur} className="form-range" onChange={e=> setBgBlur(parseInt(e.target.value,10))} />
+                        <div className="d-flex gap-2 flex-wrap mt-2">
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=> setBgBlur(10)}>浅</button>
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=> setBgBlur(20)}>默认</button>
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=> setBgBlur(32)}>重</button>
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=> setBgBlur(45)}>更重</button>
+                        </div>
+                      </div>
                     </div>
                   </li>
                 )}
+                {/* 透明度调节面板已移除 */}
                 <li className="nav-item dropdown">
                   <a className="btn btn-outline-light dropdown-toggle me-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     {currentLanguage === 'en' ? 'English' : '中文'}
@@ -312,11 +392,8 @@ const App: React.FC = () => {
               <DashboardPage />
             </ProtectedRoute>
           } />
-          <Route path="/events" element={
-            <ProtectedRoute>
-              <EventsPage />
-            </ProtectedRoute>
-          } />
+          <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
+          <Route path="/events/:id" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
           <Route path="/reminders" element={
             <ProtectedRoute>
               <RemindersPage />
@@ -350,6 +427,7 @@ const App: React.FC = () => {
         </div>
       </footer>
   </div>
+  </NowProvider>
   );
 };
 

@@ -69,7 +69,9 @@ func Auth(next http.Handler) http.Handler {
 		token := ""
 		if authHeader != "" {
 			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" { token = parts[1] }
+			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+				token = parts[1]
+			}
 		}
 		// 允许通过 query token (SSE 等不便自定义 header 的场景)
 		if token == "" {

@@ -326,7 +326,6 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="container py-4 panel-wrap">
-      <div className="panel-overlay" />
       <div className="panel-content">
       <div className="row">
         <div className="col-12">

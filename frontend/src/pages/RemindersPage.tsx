@@ -48,6 +48,25 @@ interface CreateReminderForm {
 }
 
 const RemindersPage: React.FC = () => {
+  // 内联倒计时组件 (与 EventsPage 类似) target: ISO 字符串
+  const Countdown: React.FC<{ target?: string; pastLabel?: string; prefix?: string }> = ({ target, pastLabel='已过', prefix='倒计时' }) => {
+    const [now, setNow] = useState(Date.now());
+    useEffect(()=>{ const id = setInterval(()=> setNow(Date.now()), 1000); return ()=> clearInterval(id); }, []);
+    if (!target) return <span className="text-muted">-</span>;
+    const ms = new Date(target).getTime();
+    if (isNaN(ms)) return <span className="text-muted" title={target}>-</span>;
+    let diff = ms - now;
+    const past = diff < 0; diff = Math.abs(diff);
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000)/3600000);
+    const m = Math.floor((diff % 3600000)/60000);
+    const s = Math.floor((diff % 60000)/1000);
+    let label = '';
+    if (d>0) label = `${d}d ${h}h`;
+    else if (h>0) label = `${h}h ${m}m`;
+    else label = `${m}m ${s}s`;
+    return <span className={"badge bg-" + (past? 'secondary':'info text-dark')} title={new Date(ms).toLocaleString()}>{past? `${pastLabel} ${label}`: `${prefix} ${label}`}</span>;
+  };
   const { t, i18n } = useTranslation();
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   // const dispatch: AppDispatch = useDispatch();
@@ -80,7 +99,7 @@ const RemindersPage: React.FC = () => {
     if (draft.advance_days < 0) errs.advance_days = t('reminders.validation.advanceNonNegative','Advance days >=0');
     return errs;
   };
-  const isFormValid = useMemo(()=> Object.keys(formErrors).length===0, [formErrors]);
+  const isFormValid = useMemo(()=> Object.keys(validate(formData)).length===0, [formData]);
 
   // 获取提醒列表
   const isValidHex24 = (s: string) => /^[0-9a-fA-F]{24}$/.test(s) && s !== '000000000000000000000000';
@@ -324,7 +343,6 @@ const RemindersPage: React.FC = () => {
 
   return (
     <div className="container-fluid mt-4 panel-wrap">
-      <div className="panel-overlay" />
       <div className="panel-content">
       <div className="row mb-4">
         <div className="col-12 d-flex justify-content-between align-items-center">
@@ -336,7 +354,7 @@ const RemindersPage: React.FC = () => {
           <button className="btn btn-outline-secondary" onClick={fetchReminders} title={t('common.refresh','Refresh')}>
             <i className="bi bi-arrow-clockwise" />
           </button>
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+          <button className="btn btn-primary" onClick={() => { console.log('[DEBUG] Create Reminder button clicked'); setShowCreateModal(true); }}>
             <i className="bi bi-plus-lg me-1"></i>{t('reminders.create')}
           </button>
           </div>
@@ -383,7 +401,14 @@ const RemindersPage: React.FC = () => {
                           <div className="text-muted small">ID: {reminder.id}{reminder._invalid_id && <span className="ms-2 badge bg-warning text-dark">invalid</span>}</div>
                         </td>
                         <td>{reminder.event?.title || getEventTitle(reminder.event_id)}</td>
-            <td>{Array.isArray(reminder.reminder_times) ? reminder.reminder_times.join(', ') : ''}</td>
+                        <td>
+                          {/* 显示 next_send 与倒计时；保留计划时间集合供参考 */}
+                          {reminder.next_send && <div className="mb-1"><i className="bi bi-bell me-1" />{formatDateTime(reminder.next_send)}</div>}
+                          <Countdown target={reminder.next_send} />
+                          {Array.isArray(reminder.reminder_times) && reminder.reminder_times.length>0 && (
+                            <div className="small text-muted mt-1" title={t('reminders.plannedTimes','Planned times')}>{reminder.reminder_times.join(', ')}</div>
+                          )}
+                        </td>
                         <td>
                           <span className={`badge bg-${reminder.reminder_type === 'email' ? 'info' : reminder.reminder_type === 'both' ? 'success' : 'primary'}`}>
                             {t(`reminders.type_${reminder.reminder_type}`, reminder.reminder_type)}

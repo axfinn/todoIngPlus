@@ -1,17 +1,4 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #f8f9fa;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+:root { font-family: system-ui, Avenir, Helvetica, Arial, sans-serif; line-height:1.5; font-weight:400; background:transparent; }
 
 a {
   font-weight: 500;
@@ -22,79 +9,54 @@ a:hover {
   color: #0a58ca;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: #f8f9fa;
-}
+body { margin:0; min-width:320px; min-height:100vh; background:transparent; }
 
-/* 背景模糊与遮罩，保证所有页面内容可读 */
-.app-bg-overlay {
-  backdrop-filter: blur(12px) brightness(0.8) saturate(1.1);
-  -webkit-backdrop-filter: blur(12px) brightness(0.8) saturate(1.1);
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), rgba(255,255,255,0.15)) , linear-gradient(120deg, rgba(255,255,255,0.25), rgba(255,255,255,0.10));
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* 内容区域统一半透明白底提高对比 */
-.app-content-wrapper > .container, .app-content-surface, .card, .modal-content {
-  background-color: rgba(255,255,255,0.82) !important;
-  backdrop-filter: blur(4px) saturate(1.05);
-  -webkit-backdrop-filter: blur(4px) saturate(1.05);
-}
-
-/* 额外提升表格可读性 */
-table.table { background-color: rgba(255,255,255,0.9); }
-table.table thead th { background: rgba(255,255,255,0.85); }
-
-/* 信息面板蒙版及内容容器 (用于提醒页等) */
-.panel-wrap { position: relative; }
-.panel-wrap { isolation: isolate; }
-.panel-wrap .panel-overlay {
-  position: absolute;
+/* 新：使用 body::before 作为可靠模糊背景（无需额外 DOM 元素） */
+body.has-bg::before {
+  content: '';
+  position: fixed;
   inset: 0;
-  background: rgba(255,255,255,0.55);
-  backdrop-filter: blur(10px) saturate(1.2);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  border-radius: 12px;
-  pointer-events: none !important; /* 禁止遮挡点击（加 !important 防御后续覆盖） */
-  z-index: 1;
+  background: var(--app-bg-image, none) center/cover no-repeat;
+  filter: blur(var(--app-bg-blur,20px)) brightness(0.9) saturate(1.05);
+  transform: scale(1.08);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .7s ease;
 }
-.panel-wrap .panel-content { position: relative; z-index: 10; pointer-events: auto; }
-
-/* 允许通过 body.no-panel-overlay 快速移除蒙版（调试用） */
-body.no-panel-overlay .panel-wrap .panel-overlay { display: none !important; }
-
-/* 背景模糊全局关闭模式 */
-body.no-blur .app-bg-overlay { display: none !important; }
-
-/* 调试模式：body.debug-hitbox 为交互元素加 outline 排查遮挡 */
-body.debug-hitbox button, 
-body.debug-hitbox a, 
-body.debug-hitbox [role="button"],
-body.debug-hitbox input,
-body.debug-hitbox select,
-body.debug-hitbox textarea {
-  outline: 2px dashed rgba(0,123,255,0.6) !important;
-  outline-offset: 2px;
-}
-
-/* 防御：若父级出现新的 stacking context，保证交互层始终可点击 */
-.panel-wrap { z-index: 0; }
-
+body.has-bg.bg-visible::before { opacity: 1; }
 @media (prefers-color-scheme: dark) {
-  .panel-wrap .panel-overlay { background: rgba(30,30,30,0.55); }
+  body.has-bg::before { filter: blur(var(--app-bg-blur-dark, calc(var(--app-bg-blur,20px) * 1.1))) brightness(0.55) saturate(1.25); }
 }
 
-/* 深色模式适配 */
-@media (prefers-color-scheme: dark) {
-  .app-bg-overlay { backdrop-filter: blur(14px) brightness(0.5) saturate(1.2); background: rgba(0,0,0,0.35); }
-  .app-content-wrapper > .container, .app-content-surface, .card, .modal-content { background-color: rgba(30,30,30,0.82) !important; }
-  table.table { background-color: rgba(40,40,40,0.9); }
-  table.table thead th { background: rgba(55,55,55,0.85); }
-}
+/* 模糊背景层（不遮挡交互） */
+/* 保留旧 app-bg-blur（若同时存在不会冲突）；但默认不再插入该元素 */
+
+/* 去除模糊与透明覆盖层，采用普通卡片背景 */
+table.table { background-color:#fff; }
+table.table thead th { background:#fff; }
+
+/* 轻量改进：让表格与通用卡片稍微透出背景 */
+table.table { background-color: rgba(255,255,255,0.94); }
+table.table thead th { background: rgba(255,255,255,0.96); }
+
+/* 旧 panel overlay 体系已移除 */
+
+/* 交互修复：确保主内容层在任何残余背景层之上，防止按钮被遮挡 */
+.panel-content, .panel-wrap .panel-content { position: relative; z-index: 1; }
+.panel-overlay { display: none !important; }
+
+/* 防御：若存在误加 pointer-events: none 的祖先，通过此实用类可恢复 */
+.pe-auto-force, .pe-auto-force * { pointer-events: auto !important; }
+
+/* 确保主内容区域层级高于背景与潜在遗留层 */
+.app-content-wrapper { position: relative; z-index: 2; }
+
+/* 强制自定义模态框浮于更高层（兼容未引入 bootstrap JS 时的 stacking）*/
+.modal.show.d-block { z-index: 1100; }
+
+/* 深色模式简单反色 */
+@media (prefers-color-scheme: dark) { body { background:#1e1e1e; color:#ddd; } table.table, table.table thead th { background:#2a2a2a; } }
 
 h1 {
   font-size: 2.5rem;
@@ -126,9 +88,14 @@ button:focus-visible {
 .card {
   border-radius: 12px;
   border: none;
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s, box-shadow 0.2s, background .3s;
 }
+.app-bg-fallback { position:fixed; inset:0; z-index:0; background-size:cover; background-position:center; filter:blur(var(--app-bg-blur,20px)) brightness(0.9) saturate(1.05); transform:scale(1.08); pointer-events:none; }
+@media (prefers-color-scheme:dark){ .app-bg-fallback { filter:blur(var(--app-bg-blur-dark,22px)) brightness(0.55) saturate(1.25); } }
+
 
 .card:hover {
   transform: translateY(-5px);
@@ -198,10 +165,14 @@ button:focus-visible {
   border-radius: 10px;
 }
 
-footer {
-  background-color: #fff;
-  border-top: 1px solid #dee2e6;
-}
+footer { background-color: rgba(255,255,255,0.9); border-top:1px solid #dee2e6; backdrop-filter:blur(4px); }
+
+/* 半透明容器可复用 */
+.surface-translucent { background: rgba(255,255,255,0.82) !important; backdrop-filter: blur(3px); }
+.surface-clear { background: rgba(255,255,255,0.65) !important; }
+
+/* 开发调试：按 b 键切换内容背景透明度以验证背景图 */
+body.debug-bg-transparent .card, body.debug-bg-transparent footer { background: rgba(255,255,255,0.55) !important; }
 
 /* Custom utility classes */
 .shadow-sm {
@@ -220,18 +191,7 @@ footer {
   border-radius: 0.75rem !important;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #0a58ca;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
+@media (prefers-color-scheme: light) { :root { color:#213547; } a:hover { color:#0a58ca; } button { background-color:#f9f9f9; } }
 
 @media (max-width: 768px) {
   h1 {

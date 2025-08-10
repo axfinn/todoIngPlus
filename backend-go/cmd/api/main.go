@@ -120,15 +120,15 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/axfinn/todoIng/backend-go/internal/api"
 	"github.com/axfinn/todoIng/backend-go/internal/captcha"
 	"github.com/axfinn/todoIng/backend-go/internal/email"
-	"github.com/axfinn/todoIng/backend-go/internal/observability"
 	"github.com/axfinn/todoIng/backend-go/internal/notifications"
+	"github.com/axfinn/todoIng/backend-go/internal/observability"
 	"github.com/axfinn/todoIng/backend-go/internal/services"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
@@ -236,6 +236,17 @@ func main() {
 	// 启动提醒调度器（增强：带 hub）
 	reminderScheduler := services.NewReminderScheduler(db, hub)
 	go reminderScheduler.Start()
+
+	// 手动触发提醒检查（仅开发/测试用）
+	r.HandleFunc("/api/reminders/trigger", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		reminderScheduler.TriggerOnce()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"message":"reminder scan triggered"}`))
+	}).Methods(http.MethodPost)
 	observability.LogInfo("All API routes configured")
 
 	port := os.Getenv("PORT")

@@ -204,7 +204,7 @@ func (h *EventHandler) ListEvents(w http.ResponseWriter, r *http.Request) {
 
 	// 解析查询参数
 	query := r.URL.Query()
-	
+
 	page := 1
 	if pageStr := query.Get("page"); pageStr != "" {
 		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
@@ -269,10 +269,23 @@ func (h *EventHandler) GetUpcomingEvents(w http.ResponseWriter, r *http.Request)
 		http.Error(w, fmt.Sprintf("Failed to get upcoming events: %v", err), http.StatusInternalServerError)
 		return
 	}
+	// 增强：为每个事件计算倒计时（秒）与剩余天数
+	now := time.Now()
+	type eventWithCountdown struct {
+		models.Event
+		CountdownSeconds int `json:"countdown_seconds"`
+		DaysLeft         int `json:"days_left"`
+	}
+	res := make([]eventWithCountdown, 0, len(events))
+	for _, ev := range events {
+		secs := int(ev.EventDate.Sub(now).Seconds())
+		days := int(ev.EventDate.Sub(now).Hours() / 24)
+		res = append(res, eventWithCountdown{Event: ev, CountdownSeconds: secs, DaysLeft: days})
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"events": events,
+		"events": res,
 		"days":   days,
 	})
 }
@@ -292,7 +305,7 @@ func (h *EventHandler) GetCalendarEvents(w http.ResponseWriter, r *http.Request)
 	}
 
 	query := r.URL.Query()
-	
+
 	year := time.Now().Year()
 	if yearStr := query.Get("year"); yearStr != "" {
 		if y, err := strconv.Atoi(yearStr); err == nil && y >= 2020 && y <= 2050 {

@@ -13,13 +13,15 @@ type Reminder struct {
 	UserID        primitive.ObjectID `bson:"user_id" json:"user_id"`
 	AdvanceDays   int                `bson:"advance_days" json:"advance_days" validate:"min=0,max=365"`
 	ReminderTimes []string           `bson:"reminder_times" json:"reminder_times"` // ["09:00", "18:00"]
-	ReminderType  string             `bson:"reminder_type" json:"reminder_type" validate:"required,oneof=app email both"`
-	CustomMessage string             `bson:"custom_message,omitempty" json:"custom_message,omitempty"`
-	IsActive      bool               `bson:"is_active" json:"is_active"`
-	LastSent      *time.Time         `bson:"last_sent,omitempty" json:"last_sent,omitempty"`
-	NextSend      *time.Time         `bson:"next_send,omitempty" json:"next_send,omitempty"`
-	CreatedAt     time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt     time.Time          `bson:"updated_at" json:"updated_at"`
+	// AbsoluteTimes 允许直接指定绝对提醒时间（UTC）列表，优先于基于事件/AdvanceDays + ReminderTimes 的计算
+	AbsoluteTimes []time.Time `bson:"absolute_times,omitempty" json:"absolute_times,omitempty"`
+	ReminderType  string      `bson:"reminder_type" json:"reminder_type" validate:"required,oneof=app email both"`
+	CustomMessage string      `bson:"custom_message,omitempty" json:"custom_message,omitempty"`
+	IsActive      bool        `bson:"is_active" json:"is_active"`
+	LastSent      *time.Time  `bson:"last_sent,omitempty" json:"last_sent,omitempty"`
+	NextSend      *time.Time  `bson:"next_send,omitempty" json:"next_send,omitempty"`
+	CreatedAt     time.Time   `bson:"created_at" json:"created_at"`
+	UpdatedAt     time.Time   `bson:"updated_at" json:"updated_at"`
 }
 
 // CreateReminderRequest 创建提醒请求
@@ -27,17 +29,19 @@ type CreateReminderRequest struct {
 	EventID       primitive.ObjectID `json:"event_id" validate:"required"`
 	AdvanceDays   int                `json:"advance_days" validate:"min=0,max=365"`
 	ReminderTimes []string           `json:"reminder_times" validate:"required,min=1"`
+	AbsoluteTimes []time.Time        `json:"absolute_times,omitempty"`
 	ReminderType  string             `json:"reminder_type" validate:"required,oneof=app email both"`
 	CustomMessage string             `json:"custom_message,omitempty"`
 }
 
 // UpdateReminderRequest 更新提醒请求
 type UpdateReminderRequest struct {
-	AdvanceDays   *int     `json:"advance_days,omitempty" validate:"omitempty,min=0,max=365"`
-	ReminderTimes []string `json:"reminder_times,omitempty" validate:"omitempty,min=1"`
-	ReminderType  *string  `json:"reminder_type,omitempty" validate:"omitempty,oneof=app email both"`
-	CustomMessage *string  `json:"custom_message,omitempty"`
-	IsActive      *bool    `json:"is_active,omitempty"`
+	AdvanceDays   *int         `json:"advance_days,omitempty" validate:"omitempty,min=0,max=365"`
+	ReminderTimes []string     `json:"reminder_times,omitempty" validate:"omitempty,min=1"`
+	ReminderType  *string      `json:"reminder_type,omitempty" validate:"omitempty,oneof=app email both"`
+	CustomMessage *string      `json:"custom_message,omitempty"`
+	IsActive      *bool        `json:"is_active,omitempty"`
+	AbsoluteTimes *[]time.Time `json:"absolute_times,omitempty"`
 }
 
 // ReminderListResponse 提醒列表响应
@@ -57,22 +61,22 @@ type ReminderWithEvent struct {
 
 // UpcomingReminder 即将到来的提醒
 type UpcomingReminder struct {
-	ID          primitive.ObjectID `json:"id"`
-	EventTitle  string             `json:"event_title"`
-	EventDate   time.Time          `json:"event_date"`
-	Message     string             `json:"message"`
-	DaysLeft    int                `json:"days_left"`
-	Importance  int                `json:"importance"`
-	ReminderAt  time.Time          `json:"reminder_at"`
+	ID         primitive.ObjectID `json:"id"`
+	EventTitle string             `json:"event_title"`
+	EventDate  time.Time          `json:"event_date"`
+	Message    string             `json:"message"`
+	DaysLeft   int                `json:"days_left"`
+	Importance int                `json:"importance"`
+	ReminderAt time.Time          `json:"reminder_at"`
 }
 
 // TaskSortConfig 任务排序配置
 type TaskSortConfig struct {
 	UserID          primitive.ObjectID `bson:"user_id" json:"user_id"`
-	PriorityDays    int                `bson:"priority_days" json:"priority_days" validate:"min=1,max=30"`       // 优先显示天数，默认7天
+	PriorityDays    int                `bson:"priority_days" json:"priority_days" validate:"min=1,max=30"`          // 优先显示天数，默认7天
 	MaxDisplayCount int                `bson:"max_display_count" json:"max_display_count" validate:"min=5,max=100"` // 最大显示数量，默认20
-	WeightUrgent    float64            `bson:"weight_urgent" json:"weight_urgent" validate:"min=0,max=1"`       // 紧急权重，默认0.7
-	WeightImportant float64            `bson:"weight_important" json:"weight_important" validate:"min=0,max=1"` // 重要权重，默认0.3
+	WeightUrgent    float64            `bson:"weight_urgent" json:"weight_urgent" validate:"min=0,max=1"`           // 紧急权重，默认0.7
+	WeightImportant float64            `bson:"weight_important" json:"weight_important" validate:"min=0,max=1"`     // 重要权重，默认0.3
 	CreatedAt       time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt       time.Time          `bson:"updated_at" json:"updated_at"`
 }
@@ -104,10 +108,10 @@ type DashboardData struct {
 
 // EventSummary 事件统计
 type EventSummary struct {
-	TotalEvents    int64                `json:"total_events"`
-	UpcomingCount  int64                `json:"upcoming_count"`
-	TodayCount     int64                `json:"today_count"`
-	TypeBreakdown  map[string]int64     `json:"type_breakdown"`
+	TotalEvents   int64            `json:"total_events"`
+	UpcomingCount int64            `json:"upcoming_count"`
+	TodayCount    int64            `json:"today_count"`
+	TypeBreakdown map[string]int64 `json:"type_breakdown"`
 }
 
 // TaskSummary 任务统计
@@ -124,8 +128,23 @@ func (r *Reminder) CalculateNextSendTime(event Event) *time.Time {
 		return nil
 	}
 
+	// 若配置了绝对时间列表，取第一个未来时间
+	if len(r.AbsoluteTimes) > 0 {
+		now := time.Now()
+		var next *time.Time
+		for _, t := range r.AbsoluteTimes {
+			if t.After(now) {
+				if next == nil || t.Before(*next) {
+					tmp := t
+					next = &tmp
+				}
+			}
+		}
+		return next
+	}
+
 	now := time.Now()
-	
+
 	// 获取事件的下次发生时间
 	var eventTime *time.Time
 	if event.RecurrenceType == "none" {
@@ -143,7 +162,7 @@ func (r *Reminder) CalculateNextSendTime(event Event) *time.Time {
 
 	// 计算提醒日期
 	reminderDate := eventTime.AddDate(0, 0, -r.AdvanceDays)
-	
+
 	// 如果提醒日期已过，返回 nil
 	if reminderDate.Before(now.Truncate(24 * time.Hour)) {
 		return nil
@@ -154,7 +173,7 @@ func (r *Reminder) CalculateNextSendTime(event Event) *time.Time {
 		if len(timeStr) == 5 { // HH:MM 格式
 			hour := int((timeStr[0]-'0')*10 + (timeStr[1] - '0'))
 			minute := int((timeStr[3]-'0')*10 + (timeStr[4] - '0'))
-			
+
 			reminderTime := time.Date(
 				reminderDate.Year(), reminderDate.Month(), reminderDate.Day(),
 				hour, minute, 0, 0, reminderDate.Location(),

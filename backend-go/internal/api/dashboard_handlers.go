@@ -1,3 +1,11 @@
+/*
+ * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
+ * @Date: 2025-08-10 02:58:16
+ * @LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
+ * @LastEditTime: 2025-08-10 20:43:45
+ * @FilePath: /todoIngPlus/backend-go/internal/api/dashboard_handlers.go
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 package api
 
 import (
@@ -124,17 +132,17 @@ func (d *DashboardDeps) GetTaskSortConfig(w http.ResponseWriter, r *http.Request
 // SetupDashboardRoutes 设置仪表板相关路由
 func SetupDashboardRoutes(r *mux.Router, deps *DashboardDeps) {
 	dashboard := r.PathPrefix("/api/dashboard").Subrouter()
-	
+
 	// 应用认证中间件
 	dashboard.Use(Auth)
 
 	// 仪表板数据
 	dashboard.HandleFunc("", deps.GetDashboardData).Methods("GET")
 	dashboard.HandleFunc("/", deps.GetDashboardData).Methods("GET")
-	
+
 	// 按优先级获取任务
 	dashboard.HandleFunc("/tasks", deps.GetPriorityTasks).Methods("GET")
-	
+
 	// 任务排序配置
 	dashboard.HandleFunc("/config", deps.GetTaskSortConfig).Methods("GET")
 	dashboard.HandleFunc("/config", deps.UpdateTaskSortConfig).Methods("PUT")

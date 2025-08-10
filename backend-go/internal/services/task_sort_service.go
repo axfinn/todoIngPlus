@@ -37,21 +37,21 @@ func NewTaskSortService(db *mongo.Database) *TaskSortService {
 // GetTaskSortConfig 获取用户的任务排序配置
 func (s *TaskSortService) GetTaskSortConfig(ctx context.Context, userID primitive.ObjectID) (*models.TaskSortConfig, error) {
 	var config models.TaskSortConfig
-	
+
 	err := s.sortConfigColl.FindOne(ctx, bson.M{"user_id": userID}).Decode(&config)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			// 创建默认配置
 			config = models.TaskSortConfig{
 				UserID:          userID,
-				PriorityDays:    7,    // 默认7天内的任务优先显示
-				MaxDisplayCount: 20,   // 默认显示20个任务
-				WeightUrgent:    0.7,  // 紧急权重70%
-				WeightImportant: 0.3,  // 重要权重30%
+				PriorityDays:    7,   // 默认7天内的任务优先显示
+				MaxDisplayCount: 20,  // 默认显示20个任务
+				WeightUrgent:    0.7, // 紧急权重70%
+				WeightImportant: 0.3, // 重要权重30%
 				CreatedAt:       time.Now(),
 				UpdatedAt:       time.Now(),
 			}
-			
+
 			_, err = s.sortConfigColl.InsertOne(ctx, config)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create default sort config: %w", err)
@@ -67,7 +67,7 @@ func (s *TaskSortService) GetTaskSortConfig(ctx context.Context, userID primitiv
 // UpdateTaskSortConfig 更新任务排序配置
 func (s *TaskSortService) UpdateTaskSortConfig(ctx context.Context, userID primitive.ObjectID, req models.UpdateTaskSortConfigRequest) (*models.TaskSortConfig, error) {
 	filter := bson.M{"user_id": userID}
-	
+
 	update := bson.M{
 		"$set": bson.M{
 			"updated_at": time.Now(),
@@ -90,7 +90,7 @@ func (s *TaskSortService) UpdateTaskSortConfig(ctx context.Context, userID primi
 	}
 
 	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
-	
+
 	var config models.TaskSortConfig
 	err := s.sortConfigColl.FindOneAndUpdate(ctx, filter, update, opts).Decode(&config)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *TaskSortService) UpdateTaskSortConfig(ctx context.Context, userID primi
 // CalculateTaskPriority 计算任务优先级分数
 func (s *TaskSortService) CalculateTaskPriority(task models.Task, config models.TaskSortConfig) float64 {
 	now := time.Now()
-	
+
 	// 如果任务没有截止时间，给一个默认的低优先级
 	if task.Deadline == nil {
 		return 0.1
@@ -190,7 +190,7 @@ func (s *TaskSortService) GetPriorityTasks(ctx context.Context, userID primitive
 
 	for _, task := range tasks {
 		priorityScore := s.CalculateTaskPriority(task, *config)
-		
+
 		var daysLeft int
 		if task.Deadline != nil {
 			daysLeft = int(task.Deadline.Sub(now).Hours() / 24)
@@ -238,7 +238,7 @@ func (s *TaskSortService) GetSmartTaskList(ctx context.Context, userID primitive
 
 	// 如果需要包含事件，可以将即将到来的事件也转换为"任务"
 	// 这里可以根据需要实现将事件转换为任务的逻辑
-	
+
 	return priorityTasks, nil
 }
 
