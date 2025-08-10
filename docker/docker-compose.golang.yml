@@ -1,0 +1,235 @@
+# TodoIng - Golang 后端部署方案
+# 使用: docker-compose -f docker-compose.golang.yml up -d
+
+version: '3.8'
+
+services:
+  # MongoDB 数据库
+  mongodb:
+    image: mongo:7-jammy
+    container_name: todoing_mongodb_golang
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: todoing
+    volumes:
+      - mongodb_data_golang:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - todoing_golang_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis 缓存 (用于会话和验证码)
+  redis:
+    image: redis:7-alpine
+    container_name: todoing_redis_golang
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass redis123
+    volumes:
+      - redis_data_golang:/data
+    networks:
+      - todoing_golang_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Golang 后端服务
+  backend-golang:
+    image: ${GOLANG_BACKEND_IMAGE:-axiu/todoing-go:latest}
+    build:
+      context: ../backend-go
+      dockerfile: Dockerfile
+      target: production
+    container_name: todoing_backend_golang
+    restart: unless-stopped
+    ports:
+      - "5004:5004"
+    environment:
+      # 仅保留 .env 中未定义或需要固定的运行时变量
+      PORT: 5004                # 服务端口（代码使用）
+      GIN_MODE: release         # 运行模式
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/todoing?authSource=admin
+      REDIS_URL: redis://:redis123@redis:6379
+      LOG_FILE: /app/logs/app.log
+      GRPC_PORT: 9090
+      ENABLE_GRPC: ${ENABLE_GRPC:-true}
+      
+    env_file:
+      - .env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs/golang:/app/logs
+      - ./backend-go/configs:/app/configs:ro
+    networks:
+      - todoing_golang_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # gRPC 服务 (可选)
+  grpc-server:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile
+      target: grpc
+    container_name: todoing_grpc_golang
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    environment:
+      GRPC_PORT: 9090
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/todoing?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_change_in_production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    env_file:
+      - .env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./logs/grpc:/app/logs
+    networks:
+      - todoing_golang_network
+    profiles:
+      - grpc
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:9090"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 前端服务
+  frontend:
+    image: ${FRONTEND_IMAGE:-axiu/todoing-frontend:latest}
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      # 传递 Vite 构建期需要的变量（只有构建阶段读取，运行阶段环境变量不会影响已编译代码）
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_ENABLE_CAPTCHA: ${ENABLE_CAPTCHA:-true}
+        VITE_ENABLE_EMAIL_VERIFICATION: ${ENABLE_EMAIL_VERIFICATION:-false}
+        VITE_DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-false}
+        VITE_APP_NAME: ${APP_NAME:-TodoIng}
+        VITE_APP_VERSION: ${APP_VERSION:-1.0.0}
+    container_name: todoing_frontend_golang
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    env_file:
+      - .env
+    environment:
+      VITE_API_BASE_URL: http://localhost:5004/api
+      VITE_GRPC_URL: http://localhost:9090
+      VITE_DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-false}
+      VITE_ENABLE_CAPTCHA: ${ENABLE_CAPTCHA:-true}
+      VITE_APP_NAME: TodoIng
+      VITE_APP_VERSION: 1.0.0
+    volumes:
+      - ../frontend/nginx-golang.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend-golang:
+        condition: service_healthy
+    networks:
+      - todoing_golang_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: todoing_nginx_golang
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/golang.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend-golang
+    networks:
+      - todoing_golang_network
+
+  # 监控服务 - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: todoing_prometheus_golang
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data_golang:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - todoing_golang_network
+    profiles:
+      - monitoring
+
+  # 监控服务 - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: todoing_grafana_golang
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - grafana_data_golang:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - todoing_golang_network
+    profiles:
+      - monitoring
+
+networks:
+  todoing_golang_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  mongodb_data_golang:
+    driver: local
+  redis_data_golang:
+    driver: local
+  prometheus_data_golang:
+    driver: local
+  grafana_data_golang:
+    driver: local
