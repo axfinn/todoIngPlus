@@ -222,7 +222,10 @@
     "reminderType": "Reminder Type",
     "reminderMessage": "Custom Reminder Message",
     "reminderMessagePlaceholder": "Leave empty to use template",
-    "reminderCreateFailed": "Reminder creation failed"
+  "reminderCreateFailed": "Reminder creation failed",
+  "viewCard": "Card",
+  "viewList": "List",
+  "viewCompact": "Compact"
   },
   "reminders": {
     "title": "Reminders",

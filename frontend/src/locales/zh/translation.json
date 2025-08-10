@@ -362,7 +362,10 @@
     "reminderType": "提醒方式",
     "reminderMessage": "自定义提醒内容",
     "reminderMessagePlaceholder": "留空使用默认模板",
-    "reminderCreateFailed": "创建提醒失败"
+  "reminderCreateFailed": "创建提醒失败",
+  "viewCard": "卡片",
+  "viewList": "列表",
+  "viewCompact": "紧凑"
   },
   "reminders": {
     "title": "提醒",
