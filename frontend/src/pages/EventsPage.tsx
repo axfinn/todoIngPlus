@@ -1,61 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../config/api';
+// import { useDispatch } from 'react-redux';
+// import type { AppDispatch } from '../app/store';
+import { useGetUpcomingQuery } from '../features/unified/unifiedApi';
+import SeverityBadge from '../components/SeverityBadge';
+import useFocusHighlight from '../hooks/useFocusHighlight';
+import DataState from '../components/DataState';
 
-// Event 类型定义
-interface Event {
-  _id: string;
+// 后端 Event 模型核心字段（简化版）
+interface EventItem {
+  id: string;              // ObjectID
   title: string;
   description: string;
-  start_time: string;
-  end_time: string;
+  event_type: string;      // birthday / anniversary / holiday / custom / meeting / deadline
+  event_date: string;      // ISO 时间
+  importance_level: number;
   location?: string;
-  recurrence?: {
-    enabled: boolean;
-    pattern: 'daily' | 'weekly' | 'monthly' | 'yearly';
-    interval: number;
-    end_date?: string;
-  };
-  user_id: string;
-  created_at: string;
-  updated_at: string;
+  is_all_day: boolean;
+  recurrence_type: string; // none / yearly / monthly / weekly / daily
+  created_at?: string;
+  updated_at?: string;
 }
 
-// 创建事件的表单数据
+// 创建事件表单
 interface CreateEventForm {
   title: string;
   description: string;
-  start_time: string;
-  end_time: string;
+  event_date: string;          // datetime-local
+  event_type: string;
+  importance_level: number;
   location: string;
-  recurrence_enabled: boolean;
-  recurrence_pattern: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  recurrence_interval: number;
-  recurrence_end_date: string;
+  is_all_day: boolean;
+  recurrence_type: string;     // none / daily / weekly / monthly / yearly
 }
 
 const EventsPage: React.FC = () => {
   const { t } = useTranslation();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  // const dispatch: AppDispatch = useDispatch(); // 事件后续若需全局状态再启用
+  // 预热 unified 缓存（不单独展示列表）使用 RTK Query 自动缓存
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // 使用通用 focus 高亮钩子
+  useFocusHighlight({ attrName: 'data-event-id' });
   
   // 表单状态
-  const [formData, setFormData] = useState<CreateEventForm>({
+  const initialForm: CreateEventForm = {
     title: '',
     description: '',
-    start_time: '',
-    end_time: '',
+    event_date: '',
+    event_type: 'custom',
+    importance_level: 3,
     location: '',
-    recurrence_enabled: false,
-    recurrence_pattern: 'daily',
-    recurrence_interval: 1,
-    recurrence_end_date: '',
-  });
+    is_all_day: false,
+    recurrence_type: 'none'
+  };
+  const [formData, setFormData] = useState<CreateEventForm>(initialForm);
+  const [formErrors, setFormErrors] = useState<Record<string,string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const validate = (draft: CreateEventForm) => {
+    const errs: Record<string,string> = {};
+    if (!draft.title.trim()) errs.title = t('events.validation.titleRequired', 'Title is required');
+    if (!draft.event_date) errs.event_date = t('events.validation.dateRequired', 'Event date required');
+    if (draft.importance_level < 1 || draft.importance_level > 5) errs.importance_level = t('events.validation.importanceRange', 'Importance 1-5');
+    return errs;
+  };
+  const isFormValid = useMemo(()=> Object.keys(formErrors).length===0, [formErrors]);
 
   // 获取事件列表
   const fetchEvents = async () => {
@@ -63,7 +78,23 @@ const EventsPage: React.FC = () => {
     setError(null);
     try {
       const response = await api.get('/events');
-      setEvents(response.data.events || response.data);
+      const list = response.data.events || [];
+      // 将后端字段映射为前端使用
+      const mapped = list.map((e: any) => ({
+        id: e.id || e._id,
+        title: e.title,
+        description: e.description,
+        event_type: e.event_type,
+        event_date: e.event_date,
+        importance_level: e.importance_level,
+        location: e.location,
+        is_all_day: e.is_all_day,
+        recurrence_type: e.recurrence_type,
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+      }));
+      setEvents(mapped);
+  // focus 高亮逻辑已抽象至 hook
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch events');
     } finally {
@@ -71,49 +102,44 @@ const EventsPage: React.FC = () => {
     }
   };
 
-  // 获取即将到来的事件
-  const fetchUpcomingEvents = async () => {
-    try {
-      const response = await api.get('/events/upcoming?days=7');
-      setUpcomingEvents(response.data.events || response.data);
-    } catch (err: any) {
-      console.error('Failed to fetch upcoming events:', err);
-    }
-  };
+  // 预热 unified 缓存（不再单独展示）
+  // 使用 RTK Query 自动请求 (events 7 天)
+  useGetUpcomingQuery({ sources: ['event'], hours: 24 * 7 });
 
   // 创建事件
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setSubmitting(true);
     setError(null);
+    const errs = validate(formData);
+    setFormErrors(errs);
+    if (Object.keys(errs).length) { setSubmitting(false); return; }
     
     try {
-      const eventData: any = {
+  if (!formData.event_date) throw new Error(t('events.validation.dateRequired', 'Event date required'));
+      // datetime-local 不带时区，Go 默认 time.Time 反序列化需要 RFC3339 (含时区)。
+      // 若用户输入形如 2025-08-10T12:30 则转为本地时间再序列化 ISO。
+      let eventDateStr = formData.event_date; // 保留原始 datetime-local 由后端多格式解析
+      const payload: any = {
         title: formData.title,
         description: formData.description,
-        start_time: formData.start_time,
-        end_time: formData.end_time,
+        event_type: formData.event_type,
+        event_date: eventDateStr,
+        importance_level: formData.importance_level,
         location: formData.location || undefined,
+        is_all_day: formData.is_all_day,
+        recurrence_type: formData.recurrence_type,
+        raw_event_date: formData.event_date,
       };
-
-      if (formData.recurrence_enabled) {
-        eventData.recurrence = {
-          enabled: true,
-          pattern: formData.recurrence_pattern,
-          interval: formData.recurrence_interval,
-          end_date: formData.recurrence_end_date || undefined,
-        };
-      }
-
-      await api.post('/events', eventData);
-      await fetchEvents();
-      await fetchUpcomingEvents();
+  await api.post('/events', payload);
+  await fetchEvents();
       setShowCreateModal(false);
       resetForm();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create event');
+  const msg = err.response?.data?.message || err.message || 'Failed to create event';
+  setError(msg);
     } finally {
-      setIsLoading(false);
+  setSubmitting(false);
     }
   };
 
@@ -126,7 +152,7 @@ const EventsPage: React.FC = () => {
     try {
       await api.delete(`/events/${eventId}`);
       await fetchEvents();
-      await fetchUpcomingEvents();
+  // unified upcoming 缓存由 RTK Query 自动刷新（可后续添加乐观更新）
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete event');
     }
@@ -138,11 +164,24 @@ const EventsPage: React.FC = () => {
       await fetchEvents();
       return;
     }
-
     setIsLoading(true);
     try {
       const response = await api.get(`/events/search?q=${encodeURIComponent(searchQuery)}`);
-      setEvents(response.data.events || response.data);
+      const list = response.data.events || [];
+      const mapped = list.map((e: any) => ({
+        id: e.id || e._id,
+        title: e.title,
+        description: e.description,
+        event_type: e.event_type,
+        event_date: e.event_date,
+        importance_level: e.importance_level,
+        location: e.location,
+        is_all_day: e.is_all_day,
+        recurrence_type: e.recurrence_type,
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+      }));
+      setEvents(mapped);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to search events');
     } finally {
@@ -150,35 +189,27 @@ const EventsPage: React.FC = () => {
     }
   };
 
-  // 重置表单
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      start_time: '',
-      end_time: '',
-      location: '',
-      recurrence_enabled: false,
-      recurrence_pattern: 'daily',
-      recurrence_interval: 1,
-      recurrence_end_date: '',
-    });
-    setEditingEvent(null);
-  };
-
-  // 处理表单输入变化
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type, checked } = e.target as any;
     if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({ ...prev, [name]: checked }));
+    } else if (name === 'importance_level') {
+      setFormData(prev => ({ ...prev, [name]: Number(value) }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
+    // 实时校验
+  setFormErrors(() => {
+      const draft = { ...formData, [name]: type==='checkbox'? checked : (name==='importance_level'? Number(value): value) } as CreateEventForm;
+      return validate(draft);
+    });
   };
+
+  const resetForm = () => setFormData(initialForm);
 
   // 格式化日期显示
   const formatDateTime = (dateTimeString: string) => {
+    if (!dateTimeString) return '-';
     const date = new Date(dateTimeString);
     return date.toLocaleString();
   };
@@ -186,170 +217,97 @@ const EventsPage: React.FC = () => {
   // 初始化数据
   useEffect(() => {
     fetchEvents();
-    fetchUpcomingEvents();
+  // unified upcoming 缓存由 RTK Query 自动刷新
   }, []);
 
   return (
-    <div className="container-fluid mt-4">
-      <div className="row">
-        <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="h2 text-primary">
-              <i className="bi bi-calendar-event me-2"></i>
-              Events & Calendar
-            </h1>
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowCreateModal(true)}
-            >
+    <div className="container-fluid mt-4 panel-wrap">
+      <div className="panel-overlay" />
+      <div className="panel-content">
+      <div className="row mb-4">
+        <div className="col-12 d-flex justify-content-between align-items-center">
+          <h1 className="h2 text-primary mb-0">
+            <i className="bi bi-calendar-event me-2"></i>
+            {t('events.title') || t('events.all') || 'Events'}
+          </h1>
+          <div className="d-flex gap-2">
+            <div className="input-group">
+              <input
+                type="text"
+                className="form-control"
+                placeholder={t('events.searchPlaceholder') || 'Search events...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+              <button className="btn btn-outline-secondary" onClick={handleSearch} disabled={isLoading}>
+                <i className="bi bi-search"></i>
+              </button>
+            </div>
+            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
               <i className="bi bi-plus-lg me-1"></i>
-              Create Event
+              {t('events.create') || 'Create'}
             </button>
           </div>
-
-          {error && (
-            <div className="alert alert-danger alert-dismissible fade show" role="alert">
-              {error}
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setError(null)}
-              ></button>
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="row">
-        {/* 即将到来的事件 */}
-        <div className="col-md-4 mb-4">
-          <div className="card h-100">
-            <div className="card-header bg-warning text-white">
-              <h5 className="card-title mb-0">
-                <i className="bi bi-clock me-2"></i>
-                Upcoming Events (7 days)
-              </h5>
-            </div>
-            <div className="card-body">
-              {upcomingEvents.length === 0 ? (
-                <p className="text-muted">No upcoming events</p>
-              ) : (
-                upcomingEvents.map((event) => (
-                  <div key={event._id} className="border-bottom pb-2 mb-2">
-                    <h6 className="mb-1">{event.title}</h6>
-                    <small className="text-muted">
-                      {formatDateTime(event.start_time)}
-                    </small>
-                    {event.location && (
-                      <div className="small text-muted">
-                        <i className="bi bi-geo-alt me-1"></i>
-                        {event.location}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
         </div>
+      )}
 
-        {/* 事件列表 */}
-        <div className="col-md-8 mb-4">
-          <div className="card">
-            <div className="card-header">
-              <div className="row align-items-center">
-                <div className="col-md-6">
-                  <h5 className="card-title mb-0">
-                    <i className="bi bi-list me-2"></i>
-                    All Events
-                  </h5>
-                </div>
-                <div className="col-md-6">
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Search events..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                    />
-                    <button className="btn btn-outline-secondary" onClick={handleSearch}>
-                      <i className="bi bi-search"></i>
-                    </button>
+      <DataState
+        loading={isLoading}
+        error={error}
+        data={events}
+        emptyHint={<div className="text-center py-5 text-muted">{t('events.noEvents')}</div>}
+        skeleton={<div className="row">{Array.from({length:6}).map((_,i)=>(<div key={i} className="col-lg-6 mb-3"><div className="border rounded p-4 placeholder-wave" style={{height:160}}><span className="placeholder col-8 mb-3 d-block"></span><span className="placeholder col-6 mb-2 d-block"></span><span className="placeholder col-4 d-block"></span></div></div>))}</div>}
+      >
+        {(list) => (
+          <div className="row">
+            {list.map((event) => (
+              <div key={event.id} data-event-id={event.id} className="col-lg-6 mb-3">
+                <div className="card border h-100">
+                  <div className="card-body d-flex flex-column">
+                    <h6 className="card-title d-flex justify-content-between align-items-start">
+                      <span className="me-2 flex-grow-1 text-truncate" title={event.title}>{event.title}</span>
+                      <div className="d-flex align-items-center gap-2">
+                        <SeverityBadge source="event" scheduledAt={event.event_date} importance={event.importance_level} showLabel={false} />
+                        <div className="dropdown">
+                          <button className="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i className="bi bi-three-dots"></i>
+                          </button>
+                          <ul className="dropdown-menu">
+                            <li>
+                              <button className="dropdown-item" onClick={() => handleDeleteEvent(event.id)}>
+                                <i className="bi bi-trash me-2"></i>{t('common.delete')}
+                              </button>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </h6>
+                    {event.description && <p className="card-text small mb-2">{event.description}</p>}
+                    <div className="small text-muted mt-auto">
+                      <div><i className="bi bi-calendar me-1"></i>{formatDateTime(event.event_date)}</div>
+                      {event.location && (
+                        <div><i className="bi bi-geo-alt me-1"></i>{event.location}</div>
+                      )}
+                      {event.recurrence_type !== 'none' && (
+                        <div><i className="bi bi-arrow-repeat me-1"></i>{t('events.repeats', { pattern: t(`events.${event.recurrence_type}`) || event.recurrence_type, interval: '' }).replace(' (every )','')}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="card-body">
-              {isLoading ? (
-                <div className="text-center py-4">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
-              ) : events.length === 0 ? (
-                <div className="text-center py-4">
-                  <i className="bi bi-calendar-x display-4 text-muted mb-3"></i>
-                  <p className="text-muted">No events found</p>
-                </div>
-              ) : (
-                <div className="row">
-                  {events.map((event) => (
-                    <div key={event._id} className="col-lg-6 mb-3">
-                      <div className="card border">
-                        <div className="card-body">
-                          <h6 className="card-title d-flex justify-content-between align-items-start">
-                            {event.title}
-                            <div className="dropdown">
-                              <button
-                                className="btn btn-sm btn-outline-secondary dropdown-toggle"
-                                type="button"
-                                data-bs-toggle="dropdown"
-                              >
-                                <i className="bi bi-three-dots"></i>
-                              </button>
-                              <ul className="dropdown-menu">
-                                <li>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => handleDeleteEvent(event._id)}
-                                  >
-                                    <i className="bi bi-trash me-2"></i>Delete
-                                  </button>
-                                </li>
-                              </ul>
-                            </div>
-                          </h6>
-                          <p className="card-text small">{event.description}</p>
-                          <div className="small text-muted">
-                            <div>
-                              <i className="bi bi-calendar me-1"></i>
-                              {formatDateTime(event.start_time)} - {formatDateTime(event.end_time)}
-                            </div>
-                            {event.location && (
-                              <div>
-                                <i className="bi bi-geo-alt me-1"></i>
-                                {event.location}
-                              </div>
-                            )}
-                            {event.recurrence?.enabled && (
-                              <div>
-                                <i className="bi bi-arrow-repeat me-1"></i>
-                                Repeats {event.recurrence.pattern} (every {event.recurrence.interval})
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            ))}
           </div>
-        </div>
-      </div>
+        )}
+      </DataState>
+  {/* 创建按钮已移动到顶部 */}
 
       {/* 创建事件模态框 */}
       {showCreateModal && (
@@ -357,7 +315,7 @@ const EventsPage: React.FC = () => {
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Create New Event</h5>
+                <h5 className="modal-title">{t('events.createNew')}</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -368,7 +326,7 @@ const EventsPage: React.FC = () => {
                 <div className="modal-body">
                   <div className="row">
                     <div className="col-md-12 mb-3">
-                      <label htmlFor="title" className="form-label">Title *</label>
+                      <label htmlFor="title" className="form-label">{t('common.title') || 'Title'} *</label>
                       <input
                         type="text"
                         className="form-control"
@@ -377,10 +335,13 @@ const EventsPage: React.FC = () => {
                         value={formData.title}
                         onChange={handleInputChange}
                         required
+                        aria-invalid={!!formErrors.title}
+                        aria-describedby={formErrors.title? 'err-title': undefined}
                       />
+                      {formErrors.title && <div id="err-title" className="text-danger small mt-1">{formErrors.title}</div>}
                     </div>
                     <div className="col-md-12 mb-3">
-                      <label htmlFor="description" className="form-label">Description</label>
+                      <label htmlFor="description" className="form-label">{t('dashboard.description') || 'Description'}</label>
                       <textarea
                         className="form-control"
                         id="description"
@@ -391,31 +352,107 @@ const EventsPage: React.FC = () => {
                       />
                     </div>
                     <div className="col-md-6 mb-3">
-                      <label htmlFor="start_time" className="form-label">Start Time *</label>
+                      <label htmlFor="event_date" className="form-label">{t('events.eventDate') || 'Event Date'} *</label>
                       <input
                         type="datetime-local"
                         className="form-control"
-                        id="start_time"
-                        name="start_time"
-                        value={formData.start_time}
+                        id="event_date"
+                        name="event_date"
+                        value={formData.event_date}
                         onChange={handleInputChange}
                         required
+                        aria-invalid={!!formErrors.event_date}
+                        aria-describedby={formErrors.event_date? 'err-event-date': undefined}
                       />
+                      {formErrors.event_date && <div id="err-event-date" className="text-danger small mt-1">{formErrors.event_date}</div>}
+                      {/* 快捷时间按钮 */}
+                      <div className="mt-2 d-flex flex-wrap gap-2 small">
+                        {(() => {
+                          const now = new Date();
+                          const pad = (n:number)=> n.toString().padStart(2,'0');
+                          const toLocalInput = (d:Date)=> `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                          const clone = (d:Date)=> new Date(d.getTime());
+                          const startOfDay = (d:Date)=> new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                          const addDays = (d:Date,days:number)=>{const nd=clone(d); nd.setDate(nd.getDate()+days); return nd;};
+                          const nextWeekday = (weekday:number)=>{ // 0=Sun
+                            const nd = clone(now); let diff = (weekday - nd.getDay() + 7) % 7; if(diff===0) diff=7; nd.setDate(nd.getDate()+diff); return nd;
+                          };
+                          const presets = [
+                            { label: t('quick.nowPlus1h') || '+1h', calc: ()=> { const d=clone(now); d.setHours(d.getHours()+1,0,0,0); return d; } },
+                            { label: t('quick.tonight') || '今晚20:00', calc: ()=> { const d = startOfDay(now); d.setHours(20,0,0,0); if(d < now) d.setDate(d.getDate()+1); return d; } },
+                            { label: t('quick.tomorrowMorning') || '明早09:00', calc: ()=> { const d = addDays(startOfDay(now),1); d.setHours(9,0,0,0); return d; } },
+                            { label: t('quick.fridayEvening') || '周五18:00', calc: ()=> { const d = nextWeekday(5); d.setHours(18,0,0,0); return d; } },
+                            { label: t('quick.nextMonday') || '下周一09:00', calc: ()=> { const d = nextWeekday(1); d.setHours(9,0,0,0); return d; } },
+                          ];
+                          return presets.map(p => (
+                            <button key={p.label} type="button" className="btn btn-outline-secondary btn-sm"
+                              onClick={()=> setFormData(prev=> ({...prev, event_date: toLocalInput(p.calc())}))}>{p.label}</button>
+                          ));
+                        })()}
+                      </div>
                     </div>
                     <div className="col-md-6 mb-3">
-                      <label htmlFor="end_time" className="form-label">End Time *</label>
-                      <input
-                        type="datetime-local"
-                        className="form-control"
-                        id="end_time"
-                        name="end_time"
-                        value={formData.end_time}
+                      <label htmlFor="event_type" className="form-label">{t('events.eventType') || 'Event Type'}</label>
+                      <select
+                        className="form-select"
+                        id="event_type"
+                        name="event_type"
+                        value={formData.event_type}
                         onChange={handleInputChange}
-                        required
+                      >
+                        <option value="custom">{t('events.custom') || 'custom'}</option>
+                        <option value="birthday">{t('events.birthday') || 'birthday'}</option>
+                        <option value="anniversary">{t('events.anniversary') || 'anniversary'}</option>
+                        <option value="holiday">{t('events.holiday') || 'holiday'}</option>
+                        <option value="meeting">{t('events.meeting') || 'meeting'}</option>
+                        <option value="deadline">{t('events.deadline') || 'deadline'}</option>
+                      </select>
+                    </div>
+                    <div className="col-md-4 mb-3">
+                      <label htmlFor="importance_level" className="form-label">{t('events.importance') || 'Importance'}</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        id="importance_level"
+                        name="importance_level"
+                        min={1}
+                        max={5}
+                        value={formData.importance_level}
+                        onChange={handleInputChange}
+                        aria-invalid={!!formErrors.importance_level}
+                        aria-describedby={formErrors.importance_level? 'err-importance': undefined}
                       />
+                      {formErrors.importance_level && <div id="err-importance" className="text-danger small mt-1">{formErrors.importance_level}</div>}
+                    </div>
+                    <div className="col-md-4 mb-3 form-check" style={{paddingTop: '2.1rem'}}>
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="is_all_day"
+                        name="is_all_day"
+                        checked={formData.is_all_day}
+                        onChange={handleInputChange}
+                      />
+                      <label className="form-check-label" htmlFor="is_all_day">{t('events.allDay') || 'All Day'}</label>
+                    </div>
+                    <div className="col-md-4 mb-3">
+                      <label htmlFor="recurrence_type" className="form-label">{t('events.recurrence') || 'Recurrence'}</label>
+                      <select
+                        className="form-select"
+                        id="recurrence_type"
+                        name="recurrence_type"
+                        value={formData.recurrence_type}
+                        onChange={handleInputChange}
+                      >
+                        <option value="none">{t('events.none') || 'none'}</option>
+                        <option value="daily">{t('events.daily')}</option>
+                        <option value="weekly">{t('events.weekly')}</option>
+                        <option value="monthly">{t('events.monthly')}</option>
+                        <option value="yearly">{t('events.yearly')}</option>
+                      </select>
                     </div>
                     <div className="col-md-12 mb-3">
-                      <label htmlFor="location" className="form-label">Location</label>
+                      <label htmlFor="location" className="form-label">{t('events.location')}</label>
                       <input
                         type="text"
                         className="form-control"
@@ -425,66 +462,6 @@ const EventsPage: React.FC = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    
-                    {/* 重复设置 */}
-                    <div className="col-md-12 mb-3">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="recurrence_enabled"
-                          name="recurrence_enabled"
-                          checked={formData.recurrence_enabled}
-                          onChange={handleInputChange}
-                        />
-                        <label className="form-check-label" htmlFor="recurrence_enabled">
-                          Repeat this event
-                        </label>
-                      </div>
-                    </div>
-                    
-                    {formData.recurrence_enabled && (
-                      <>
-                        <div className="col-md-6 mb-3">
-                          <label htmlFor="recurrence_pattern" className="form-label">Repeat Pattern</label>
-                          <select
-                            className="form-select"
-                            id="recurrence_pattern"
-                            name="recurrence_pattern"
-                            value={formData.recurrence_pattern}
-                            onChange={handleInputChange}
-                          >
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="yearly">Yearly</option>
-                          </select>
-                        </div>
-                        <div className="col-md-6 mb-3">
-                          <label htmlFor="recurrence_interval" className="form-label">Every</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="recurrence_interval"
-                            name="recurrence_interval"
-                            min="1"
-                            value={formData.recurrence_interval}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                        <div className="col-md-12 mb-3">
-                          <label htmlFor="recurrence_end_date" className="form-label">End Date (optional)</label>
-                          <input
-                            type="date"
-                            className="form-control"
-                            id="recurrence_end_date"
-                            name="recurrence_end_date"
-                            value={formData.recurrence_end_date}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
                 <div className="modal-footer">
@@ -493,20 +470,20 @@ const EventsPage: React.FC = () => {
                     className="btn btn-secondary"
                     onClick={() => { setShowCreateModal(false); resetForm(); }}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="btn btn-primary"
-                    disabled={isLoading}
+                    disabled={submitting || !isFormValid}
                   >
-                    {isLoading ? (
+                    {submitting ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Creating...
+                        {t('events.creating')}
                       </>
                     ) : (
-                      'Create Event'
+                      t('events.create')
                     )}
                   </button>
                 </div>
@@ -515,6 +492,7 @@ const EventsPage: React.FC = () => {
           </div>
         </div>
       )}
+      </div>{/* panel-content */}
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import type { RootState, AppDispatch } from './app/store';
 import { logout } from './features/auth/authSlice';
+import useNotificationStream from './hooks/useNotificationStream';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -11,6 +12,7 @@ import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/ReportsPage';
 import EventsPage from './pages/EventsPage';
 import RemindersPage from './pages/RemindersPage';
+import UnifiedBoardPage from './pages/UnifiedBoardPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -22,6 +24,16 @@ const App: React.FC = () => {
   const [isGitHubLoading, setIsGitHubLoading] = useState(false);
   const [githubError, setGithubError] = useState(false);
   const [backgroundImage, setBackgroundImage] = useState('');
+  // UI 主题增强：背景模糊 & 面板蒙版开关（持久化）
+  const [blurEnabled, setBlurEnabled] = useState<boolean>(() => {
+    const v = localStorage.getItem('ui.blurEnabled');
+    return v === null ? true : v === 'true';
+  });
+  const [panelOverlayEnabled, setPanelOverlayEnabled] = useState<boolean>(() => {
+    const v = localStorage.getItem('ui.panelOverlayEnabled');
+    return v === null ? true : v === 'true';
+  });
+  const [debugHitbox, setDebugHitbox] = useState<boolean>(false);
 
   // 背景图片数组
   const backgroundImages = [
@@ -76,17 +88,35 @@ const App: React.FC = () => {
     setCurrentLanguage(lng);
   };
 
+  // 将 body class 与开关同步（面板蒙版快速关闭）
+  useEffect(()=> {
+    if (!panelOverlayEnabled) document.body.classList.add('no-panel-overlay');
+    else document.body.classList.remove('no-panel-overlay');
+  }, [panelOverlayEnabled]);
+
+  useEffect(()=> { localStorage.setItem('ui.blurEnabled', String(blurEnabled)); }, [blurEnabled]);
+  useEffect(()=> { localStorage.setItem('ui.panelOverlayEnabled', String(panelOverlayEnabled)); }, [panelOverlayEnabled]);
+  useEffect(()=> { if (debugHitbox) document.body.classList.add('debug-hitbox'); else document.body.classList.remove('debug-hitbox'); }, [debugHitbox]);
+
+  // 订阅通知（登录后）
+  useNotificationStream(isAuthenticated);
+  const unread = useSelector((s: RootState)=> s.notifications?.unread || 0);
+
   return (
-    <div 
-      className="d-flex flex-column min-vh-100"
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed'
-      }}
-    >
+    <div className={`app-root d-flex flex-column min-vh-100 position-relative ${!blurEnabled ? 'no-blur' : ''}`}>      
+      <div
+        className="app-bg position-fixed top-0 start-0 w-100 h-100"
+        style={{
+          backgroundImage: `url(${backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed',
+          filter: blurEnabled ? 'none' : 'brightness(0.92)',
+          zIndex: -2
+        }}
+      />
+      {blurEnabled && (<div className="app-bg-overlay position-fixed top-0 start-0 w-100 h-100" />)}
       <header>
         <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
           <div className="container">
@@ -123,15 +153,16 @@ const App: React.FC = () => {
                   <li className="nav-item">
                     <Link className="nav-link" to="/events">
                       <i className="bi bi-calendar-event me-1"></i>
-                      Events
+                      {t('nav.events')}
                     </Link>
                   </li>
                 )}
-                {isAuthenticated && (
+        {isAuthenticated && (
                   <li className="nav-item">
                     <Link className="nav-link" to="/reminders">
                       <i className="bi bi-bell me-1"></i>
-                      Reminders
+                      {t('nav.reminders')}
+          {unread>0 && <span className="badge bg-danger ms-1" style={{fontSize:'0.65rem'}}>{unread}</span>}
                     </Link>
                   </li>
                 )}
@@ -142,8 +173,31 @@ const App: React.FC = () => {
                     </Link>
                   </li>
                 )}
+                {isAuthenticated && (
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/unified">
+                      <i className="bi bi-collection me-1"></i>
+                      {t('nav.unified')}
+                    </Link>
+                  </li>
+                )}
               </ul>
-              <ul className="navbar-nav mb-2 mb-lg-0">
+              <ul className="navbar-nav mb-2 mb-lg-0 align-items-lg-center">
+                {isAuthenticated && (
+                  <li className="nav-item me-2">
+                    <div className="btn-group btn-group-sm" role="group" aria-label="UI Toggles">
+                      <button type="button" className={`btn btn-${blurEnabled? 'primary':'outline-primary'}`} onClick={()=> setBlurEnabled(b=>!b)} title={blurEnabled? '关闭背景模糊':'启用背景模糊'}>
+                        <i className="bi bi-brush"></i>
+                      </button>
+                      <button type="button" className={`btn btn-${panelOverlayEnabled? 'primary':'outline-primary'}`} onClick={()=> setPanelOverlayEnabled(p=>!p)} title={panelOverlayEnabled? '关闭面板蒙版':'启用面板蒙版'}>
+                        <i className="bi bi-layers"></i>
+                      </button>
+                      <button type="button" className={`btn btn-${debugHitbox? 'danger':'outline-danger'}`} onClick={()=> setDebugHitbox(d=>!d)} title={debugHitbox? '关闭点击调试描边':'启用点击调试描边'}>
+                        <i className="bi bi-bounding-box"></i>
+                      </button>
+                    </div>
+                  </li>
+                )}
                 <li className="nav-item dropdown">
                   <a className="btn btn-outline-light dropdown-toggle me-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     {currentLanguage === 'en' ? 'English' : '中文'}
@@ -180,7 +234,7 @@ const App: React.FC = () => {
           </div>
         </nav>
       </header>
-      <main className="flex-grow-1">
+  <main className="flex-grow-1 app-content-wrapper">
         <Routes>
           <Route path="/" element={
             <div className="container py-5">
@@ -217,17 +271,23 @@ const App: React.FC = () => {
                     <div className="d-flex align-items-center justify-content-center mb-3">
                       <i className="bi bi-github me-2"></i>
                       <a href="https://github.com/axfinn/todoIng" target="_blank" rel="noopener noreferrer" className="text-decoration-none">
-                        Fork me on GitHub
+                        {t('github.fork')}
                       </a>
                     </div>
-                    <div className="d-flex justify-content-center gap-3">
-                      <>
+                    {isGitHubLoading && (
+                      <div className="text-muted small">{t('github.loading')}</div>
+                    )}
+                    {githubError && !isGitHubLoading && (
+                      <div className="text-danger small">{t('github.error')}</div>
+                    )}
+                    {!isGitHubLoading && !githubError && (
+                      <div className="d-flex justify-content-center gap-3">
                         <button 
                           className="btn btn-outline-dark btn-sm d-flex align-items-center"
                           onClick={() => window.open('https://github.com/axfinn/todoIng', '_blank')}
                         >
                           <i className="bi bi-star-fill me-1"></i> 
-                          <span>Star</span>
+                          <span>{t('github.star')}</span>
                           {githubStats.stars > 0 && (
                             <span className="badge bg-secondary ms-1">{githubStats.stars}</span>
                           )}
@@ -238,8 +298,8 @@ const App: React.FC = () => {
                             <span className="badge bg-secondary">{githubStats.forks}</span>
                           )}
                         </span>
-                      </>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -267,15 +327,20 @@ const App: React.FC = () => {
               <ReportsPage />
             </ProtectedRoute>
           } />
+          <Route path="/unified" element={
+            <ProtectedRoute>
+              <UnifiedBoardPage />
+            </ProtectedRoute>
+          } />
         </Routes>
       </main>
-      <footer className="bg-light py-3 mt-auto">
+  <footer className="bg-light py-3 mt-auto position-relative app-content-surface">
         <div className="container">
           <div className="text-center text-muted">
             <div className="d-flex align-items-center justify-content-center">
               <i className="bi bi-github me-2"></i>
               <a href="https://github.com/axfinn/todoIng" target="_blank" rel="noopener noreferrer" className="text-decoration-none text-muted">
-                Fork me on GitHub
+                {t('github.fork')}
               </a>
             </div>
             <div className="mt-2">
@@ -284,7 +349,7 @@ const App: React.FC = () => {
           </div>
         </div>
       </footer>
-    </div>
+  </div>
   );
 };
 

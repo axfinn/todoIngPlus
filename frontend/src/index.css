@@ -29,6 +29,73 @@ body {
   background-color: #f8f9fa;
 }
 
+/* 背景模糊与遮罩，保证所有页面内容可读 */
+.app-bg-overlay {
+  backdrop-filter: blur(12px) brightness(0.8) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) brightness(0.8) saturate(1.1);
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), rgba(255,255,255,0.15)) , linear-gradient(120deg, rgba(255,255,255,0.25), rgba(255,255,255,0.10));
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* 内容区域统一半透明白底提高对比 */
+.app-content-wrapper > .container, .app-content-surface, .card, .modal-content {
+  background-color: rgba(255,255,255,0.82) !important;
+  backdrop-filter: blur(4px) saturate(1.05);
+  -webkit-backdrop-filter: blur(4px) saturate(1.05);
+}
+
+/* 额外提升表格可读性 */
+table.table { background-color: rgba(255,255,255,0.9); }
+table.table thead th { background: rgba(255,255,255,0.85); }
+
+/* 信息面板蒙版及内容容器 (用于提醒页等) */
+.panel-wrap { position: relative; }
+.panel-wrap { isolation: isolate; }
+.panel-wrap .panel-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  border-radius: 12px;
+  pointer-events: none !important; /* 禁止遮挡点击（加 !important 防御后续覆盖） */
+  z-index: 1;
+}
+.panel-wrap .panel-content { position: relative; z-index: 10; pointer-events: auto; }
+
+/* 允许通过 body.no-panel-overlay 快速移除蒙版（调试用） */
+body.no-panel-overlay .panel-wrap .panel-overlay { display: none !important; }
+
+/* 背景模糊全局关闭模式 */
+body.no-blur .app-bg-overlay { display: none !important; }
+
+/* 调试模式：body.debug-hitbox 为交互元素加 outline 排查遮挡 */
+body.debug-hitbox button, 
+body.debug-hitbox a, 
+body.debug-hitbox [role="button"],
+body.debug-hitbox input,
+body.debug-hitbox select,
+body.debug-hitbox textarea {
+  outline: 2px dashed rgba(0,123,255,0.6) !important;
+  outline-offset: 2px;
+}
+
+/* 防御：若父级出现新的 stacking context，保证交互层始终可点击 */
+.panel-wrap { z-index: 0; }
+
+@media (prefers-color-scheme: dark) {
+  .panel-wrap .panel-overlay { background: rgba(30,30,30,0.55); }
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .app-bg-overlay { backdrop-filter: blur(14px) brightness(0.5) saturate(1.2); background: rgba(0,0,0,0.35); }
+  .app-content-wrapper > .container, .app-content-surface, .card, .modal-content { background-color: rgba(30,30,30,0.82) !important; }
+  table.table { background-color: rgba(40,40,40,0.9); }
+  table.table thead th { background: rgba(55,55,55,0.85); }
+}
+
 h1 {
   font-size: 2.5rem;
   line-height: 1.2;

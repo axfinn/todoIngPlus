@@ -30,7 +30,7 @@ const ReportsPage: React.FC = () => {
   const [apiUrl, setApiUrl] = useState<string>('https://api.openai.com/v1/chat/completions');
   const [provider, setProvider] = useState<string>('openai');
   const [model, setModel] = useState<string>('gpt-3.5-turbo');
-  const [showGenerateForm, setShowGenerateForm] = useState<boolean>(true);
+  // const [showGenerateForm, setShowGenerateForm] = useState<boolean>(true); // unused
   const [previewMode, setPreviewMode] = useState<'text' | 'preview'>('text');
   
   // 获取所有报告
@@ -157,7 +157,7 @@ const ReportsPage: React.FC = () => {
   const reportsLoading = loading;
   const reportsError = error;
   const isGenerating = loading;
-  const isPolishing = loading;
+  // const isPolishing = loading; // unused
   
   return (
     <div className="container-fluid">

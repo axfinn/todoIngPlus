@@ -1,16 +1,2 @@
-import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { loadUser, selectAuth } from '../features/auth/authSlice';
-import type { AppDispatch } from '../app/store';
-
-export const useLoadUser = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { isAuthenticated, token } = useSelector(selectAuth);
-
-  useEffect(() => {
-    // 如果有token但还没有用户信息，则加载用户信息
-    if (token && !isAuthenticated) {
-      dispatch(loadUser());
-    }
-  }, [dispatch, token, isAuthenticated]);
-};
+// 当前 authSlice 未提供 loadUser/selectors，此 hook 先简化为占位避免类型错误
+export const useLoadUser = () => { /* no-op until user endpoint implemented */ };

@@ -1,35 +1,39 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import api from '../../config/api';
 
-// Reminder 类型定义
+// 该 slice 原始结构与后端旧实现不一致。已重构匹配 backend-go/internal/models/reminder.go 中返回的字段。
+
+// Reminder 类型 (后端返回 ReminderWithEvent 时会带嵌套 event，可在页面层处理，这里聚焦主字段)
 export interface Reminder {
-  _id: string;
-  event_id: string;
-  message: string;
-  remind_at: string;
-  type: 'email' | 'app';
-  is_sent: boolean;
-  sent_at?: string;
+  id: string;                 // 后端 json:"id"
+  event_id: string;           // 事件 ObjectID
   user_id: string;
+  advance_days: number;
+  reminder_times: string[];   // 多个 HH:MM
+  reminder_type: 'app' | 'email' | 'both';
+  custom_message?: string;
+  is_active: boolean;
+  last_sent?: string;
+  next_send?: string;
   created_at: string;
   updated_at: string;
 }
 
-// Reminder creation request
+// 创建请求
 export interface CreateReminderRequest {
   event_id: string;
-  message: string;
-  remind_at: string;
-  type: 'email' | 'app';
+  advance_days: number;
+  reminder_times: string[];
+  reminder_type: 'app' | 'email' | 'both';
+  custom_message?: string;
 }
 
-// Reminder update request
+// 更新请求 (全部可选)
 export interface UpdateReminderRequest extends Partial<CreateReminderRequest> {}
 
 // Reminder state
 interface ReminderState {
   reminders: Reminder[];
-  upcomingReminders: Reminder[];
   isLoading: boolean;
   error: string | null;
   selectedReminder: Reminder | null;
@@ -37,7 +41,6 @@ interface ReminderState {
 
 const initialState: ReminderState = {
   reminders: [],
-  upcomingReminders: [],
   isLoading: false,
   error: null,
   selectedReminder: null,
@@ -50,32 +53,48 @@ export const fetchReminders = createAsyncThunk<Reminder[], { page?: number; limi
     try {
       const { page = 1, limit = 50 } = params || {};
       const res = await api.get(`/reminders?page=${page}&limit=${limit}`);
-      return res.data.reminders || res.data;
+      const list = res.data.reminders || res.data || [];
+      return list.map((r: any) => ({
+        id: r.id || r._id,
+        event_id: r.event_id || r.eventId,
+        user_id: r.user_id,
+        advance_days: r.advance_days ?? 0,
+        reminder_times: Array.isArray(r.reminder_times) ? r.reminder_times : (Array.isArray(r.reminderTimes) ? r.reminderTimes : []),
+        reminder_type: r.reminder_type || r.reminderType,
+        custom_message: r.custom_message || r.customMessage,
+        is_active: r.is_active,
+        last_sent: r.last_sent,
+        next_send: r.next_send,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      }));
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch reminders');
     }
   }
 );
 
-export const fetchUpcomingReminders = createAsyncThunk<Reminder[], number | void, { rejectValue: string }>(
-  'reminders/fetchUpcomingReminders',
-  async (hours, { rejectWithValue }) => {
-    try {
-      const hoursParam = hours || 24;
-      const res = await api.get(`/reminders/upcoming?hours=${hoursParam}`);
-      return res.data.reminders || res.data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch upcoming reminders');
-    }
-  }
-);
 
 export const createReminder = createAsyncThunk<Reminder, CreateReminderRequest, { rejectValue: string }>(
   'reminders/createReminder',
-  async (reminderData, { rejectWithValue }) => {
+  async (data, { rejectWithValue }) => {
     try {
-      const res = await api.post('/reminders', reminderData);
-      return res.data.reminder || res.data;
+      const res = await api.post('/reminders', data);
+      const r = res.data.reminder || res.data;
+      return {
+        id: r.id || r._id,
+        event_id: r.event_id || r.eventId,
+        user_id: r.user_id,
+        advance_days: r.advance_days ?? 0,
+        reminder_times: Array.isArray(r.reminder_times) ? r.reminder_times : (Array.isArray(r.reminderTimes) ? r.reminderTimes : []),
+        reminder_type: r.reminder_type || r.reminderType,
+        custom_message: r.custom_message || r.customMessage,
+        is_active: r.is_active,
+        last_sent: r.last_sent,
+        next_send: r.next_send,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      } as Reminder;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Failed to create reminder');
     }
@@ -87,7 +106,21 @@ export const updateReminder = createAsyncThunk<Reminder, { id: string; reminderD
   async ({ id, reminderData }, { rejectWithValue }) => {
     try {
       const res = await api.put(`/reminders/${id}`, reminderData);
-      return res.data.reminder || res.data;
+      const r = res.data.reminder || res.data;
+      return {
+        id: r.id || r._id,
+        event_id: r.event_id || r.eventId,
+        user_id: r.user_id,
+        advance_days: r.advance_days ?? 0,
+        reminder_times: Array.isArray(r.reminder_times) ? r.reminder_times : (Array.isArray(r.reminderTimes) ? r.reminderTimes : []),
+        reminder_type: r.reminder_type || r.reminderType,
+        custom_message: r.custom_message || r.customMessage,
+        is_active: r.is_active,
+        last_sent: r.last_sent,
+        next_send: r.next_send,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      } as Reminder;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Failed to update reminder');
     }
@@ -106,12 +139,14 @@ export const deleteReminder = createAsyncThunk<string, string, { rejectValue: st
   }
 );
 
-export const snoozeReminder = createAsyncThunk<Reminder, { id: string; minutes: number }, { rejectValue: string }>(
+export const snoozeReminder = createAsyncThunk<Reminder | { message: string; snooze_minutes: number }, { id: string; minutes: number }, { rejectValue: string }>(
   'reminders/snoozeReminder',
   async ({ id, minutes }, { rejectWithValue }) => {
     try {
-      const res = await api.post(`/reminders/${id}/snooze`, { minutes });
-      return res.data.reminder || res.data;
+      // 后端期望字段 snooze_minutes
+      const res = await api.post(`/reminders/${id}/snooze`, { snooze_minutes: minutes });
+      // 当前后端返回 {message, snooze_minutes} 而不是完整 Reminder，直接透传
+      return res.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Failed to snooze reminder');
     }
@@ -131,14 +166,13 @@ const reminderSlice = createSlice({
     },
     clearReminders: (state) => {
       state.reminders = [];
-      state.upcomingReminders = [];
       state.selectedReminder = null;
     },
     markReminderAsSent: (state, action: PayloadAction<string>) => {
-      const reminder = state.reminders.find(r => r._id === action.payload);
+      // 新模型暂未包含 is_sent/sent_at 字段，保留占位逻辑（未来如果需要可扩展）
+      const reminder = state.reminders.find(r => r.id === action.payload);
       if (reminder) {
-        reminder.is_sent = true;
-        reminder.sent_at = new Date().toISOString();
+        // no-op for now
       }
     },
   },
@@ -158,20 +192,6 @@ const reminderSlice = createSlice({
         state.error = action.payload || 'Failed to fetch reminders';
       });
 
-    // Fetch upcoming reminders
-    builder
-      .addCase(fetchUpcomingReminders.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchUpcomingReminders.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.upcomingReminders = action.payload;
-      })
-      .addCase(fetchUpcomingReminders.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload || 'Failed to fetch upcoming reminders';
-      });
 
     // Create reminder
     builder
@@ -196,14 +216,10 @@ const reminderSlice = createSlice({
       })
       .addCase(updateReminder.fulfilled, (state, action) => {
         state.isLoading = false;
-        const updatedReminder = action.payload;
-        const index = state.reminders.findIndex(reminder => reminder._id === updatedReminder._id);
-        if (index !== -1) {
-          state.reminders[index] = updatedReminder;
-        }
-        if (state.selectedReminder?._id === updatedReminder._id) {
-          state.selectedReminder = updatedReminder;
-        }
+        const updated = action.payload;
+        const idx = state.reminders.findIndex(r => r.id === updated.id);
+        if (idx !== -1) state.reminders[idx] = updated;
+        if (state.selectedReminder?.id === updated.id) state.selectedReminder = updated;
       })
       .addCase(updateReminder.rejected, (state, action) => {
         state.isLoading = false;
@@ -218,10 +234,8 @@ const reminderSlice = createSlice({
       })
       .addCase(deleteReminder.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.reminders = state.reminders.filter(reminder => reminder._id !== action.payload);
-        if (state.selectedReminder?._id === action.payload) {
-          state.selectedReminder = null;
-        }
+        state.reminders = state.reminders.filter(r => r.id !== action.payload);
+        if (state.selectedReminder?.id === action.payload) state.selectedReminder = null;
       })
       .addCase(deleteReminder.rejected, (state, action) => {
         state.isLoading = false;
@@ -234,18 +248,8 @@ const reminderSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(snoozeReminder.fulfilled, (state, action) => {
-        state.isLoading = false;
-        const updatedReminder = action.payload;
-        const index = state.reminders.findIndex(reminder => reminder._id === updatedReminder._id);
-        if (index !== -1) {
-          state.reminders[index] = updatedReminder;
-        }
-        // Update upcoming reminders list
-        const upcomingIndex = state.upcomingReminders.findIndex(reminder => reminder._id === updatedReminder._id);
-        if (upcomingIndex !== -1) {
-          state.upcomingReminders[upcomingIndex] = updatedReminder;
-        }
+      .addCase(snoozeReminder.fulfilled, (state) => {
+        state.isLoading = false; // 仅状态复位
       })
       .addCase(snoozeReminder.rejected, (state, action) => {
         state.isLoading = false;

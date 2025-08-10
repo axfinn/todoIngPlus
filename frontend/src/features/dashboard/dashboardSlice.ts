@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import api from '../../config/api';
-import type { Event } from '../events/eventSlice';
+import type { CalendarEvent } from '../events/eventSlice';
 import type { Reminder } from '../reminders/reminderSlice';
 import type { Task } from '../tasks/taskSlice';
 
@@ -29,7 +29,7 @@ export interface UpdateTaskSortConfigRequest {
 }
 
 export interface DashboardData {
-  upcoming_events: Event[];
+  upcoming_events: CalendarEvent[];
   priority_tasks: PriorityTask[];
   pending_reminders: Reminder[];
   stats: {

@@ -16,6 +16,28 @@
 
 ## ✨ 功能特性
 
+## 🔍 当前缺陷与计划概览
+
+> 详见 `docs/OPTIMIZATION_PLAN.md` 获取分阶段路线图与任务看板。
+
+### 已完成 (Phase 0 部分)
+
+- Unified 聚合：upcoming / calendar 支持 sources & limit
+- 安全修复：普通任务聚合缺失 userID 过滤补齐
+- server_timestamp 字段（延迟评估基础）
+- 全局反馈：ToastProvider / GlobalErrorBoundary / SkeletonList 基础
+- 去重：移除 Events / Reminders 页面独立 upcoming 侧栏
+
+### 进行中 / 下一步
+
+1. DataState 集成骨架占位（替换 spinner）
+2. Dashboard / Reminders / Events 统一过滤栏设计（sources/hours/limit/severity）
+3. 后端 UnifiedService 单元测试 scaffold
+4. README/Docs：Architecture & Severity 文档初稿
+5. 预研：RTK Query 缓存策略（stale 30s + 前台 refetch）
+
+> 目标：首屏聚合可见时间 < 1.5s，后端服务聚合逻辑测试覆盖率 60%。
+
 ### 🎯 核心功能
 
 - [x] **用户认证系统** - JWT 令牌认证，邮箱验证码登录/注册

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -38,6 +39,15 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+// Flush forwards the underlying http.Flusher when available so that
+// Server-Sent Events (SSE) endpoints work while wrapped by Logging middleware.
+// Without this, type assertion to http.Flusher in handlers fails, causing 500.
+func (rw *responseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func Recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -56,21 +66,30 @@ func Recover(next http.Handler) http.Handler {
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
+		token := ""
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" { token = parts[1] }
+		}
+		// 允许通过 query token (SSE 等不便自定义 header 的场景)
+		if token == "" {
+			token = r.URL.Query().Get("token")
+		}
+		if token == "" {
 			http.Error(w, "No token", http.StatusUnauthorized)
 			return
 		}
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			http.Error(w, "Invalid auth header", http.StatusUnauthorized)
-			return
-		}
-		claims, err := auth.Parse(parts[1])
+		claims, err := auth.Parse(token)
 		if err != nil {
 			http.Error(w, "Token invalid", http.StatusUnauthorized)
 			return
 		}
+		// 透传实例标识，便于前端/调试确认请求落在哪个容器
+		if inst := os.Getenv("INSTANCE_ID"); inst != "" {
+			w.Header().Set("X-Instance", inst)
+		}
 		ctx := context.WithValue(r.Context(), userKey, claims.UserID)
+		ctx = context.WithValue(ctx, "userID", claims.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

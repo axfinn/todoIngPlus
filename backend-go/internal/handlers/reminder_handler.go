@@ -268,7 +268,8 @@ func (h *ReminderHandler) GetUpcomingReminders(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// SnoozeReminder 暂停提醒
+// SnoozeReminder (legacy) 暂停提醒 - 已由 internal/api/reminder_handlers.go 替代，保留仅兼容旧路由。
+// TODO: remove after front-end fully migrated.
 func (h *ReminderHandler) SnoozeReminder(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value("userID").(string)
 	if !ok {

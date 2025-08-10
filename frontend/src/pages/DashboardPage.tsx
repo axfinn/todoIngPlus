@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { fetchTasks, deleteTask, createTask, updateTask, exportTasks, importTasks } from '../features/tasks/taskSlice';
 import { generateCalendarICS, downloadICSFile } from '../utils/calendarUtils';
 import type { RootState, AppDispatch } from '../app/store';
 import type { Task } from '../features/tasks/taskSlice';
+import SeverityBadge from '../components/SeverityBadge';
+import DataState from '../components/DataState';
+import useFocusHighlight from '../hooks/useFocusHighlight';
 
 const DashboardPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -44,15 +47,27 @@ const DashboardPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<string>('newest');
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null); // 用于跟踪展开的任务
   const [githubStats, setGithubStats] = useState({ stars: 0, forks: 0 });
-  const [importFile, setImportFile] = useState<File | null>(null);
+  const focusIdRef = useRef<string | null>(null);
 
+  // 解析深度链接 focus 参数
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const focus = params.get('focus');
+    if (focus) focusIdRef.current = focus;
+  }, []);
+
+  useFocusHighlight({ attrName: 'data-task-id' });
   // 计算各类任务的数量
   const todoTasksCount = tasks.filter(task => task.status === 'To Do').length;
   const inProgressTasksCount = tasks.filter(task => task.status === 'In Progress').length;
   const doneTasksCount = tasks.filter(task => task.status === 'Done').length;
 
   useEffect(() => {
-    dispatch(fetchTasks());
+    dispatch(fetchTasks()).then(() => {
+      // 加载后尝试滚动聚焦
+      if (focusIdRef.current) {
+      }
+    });
     
     // 获取GitHub项目统计信息
     fetch('https://api.github.com/repos/axfinn/todoIng')
@@ -310,7 +325,9 @@ const DashboardPage: React.FC = () => {
     });
 
   return (
-    <div className="container py-4">
+    <div className="container py-4 panel-wrap">
+      <div className="panel-overlay" />
+      <div className="panel-content">
       <div className="row">
         <div className="col-12">
           <h2 className="mb-4">{t('dashboard.title')}</h2>
@@ -463,20 +480,29 @@ const DashboardPage: React.FC = () => {
                 </div>
               )}
               
-              {filteredAndSortedTasks.length === 0 ? (
-                <div className="text-center py-5">
-                  <p className="mb-0">{t('dashboard.noTasks')}</p>
-                </div>
-              ) : (
-                <div className="row">
-                  {filteredAndSortedTasks.map((task) => (
-                    <div className="col-12 mb-3" key={task._id}>
+              <DataState
+                loading={isLoading}
+                error={error || null}
+                data={filteredAndSortedTasks}
+                emptyHint={<div className="text-center py-5 text-muted">{t('dashboard.noTasks')}</div>}
+                skeleton={<div className="row">{Array.from({length:5}).map((_,i)=>(<div key={i} className="col-12 mb-3"><div className="border rounded p-4 placeholder-wave"><span className="placeholder col-6 mb-2 d-block"></span><span className="placeholder col-8 mb-2 d-block"></span><span className="placeholder col-3 d-block"></span></div></div>))}</div>}
+              >
+                {(list) => (
+                  <div className="row">
+                    {list.map((task) => (
+                    <div className="col-12 mb-3" key={task._id} data-task-id={task._id}>
                       <div className={`card ${isTaskOverdue(task) ? 'border-danger' : ''}`}>
                         <div className="card-body">
                           <div className="d-flex justify-content-between align-items-start">
                             <div>
-                              <h5 className="card-title">
-                                {task.title}
+                              <h5 className="card-title d-flex align-items-center gap-2">
+                                <span className="flex-grow-1">{task.title}</span>
+                                <SeverityBadge
+                                  source="task"
+                                  scheduledAt={(task.deadline || task.scheduledDate) || undefined}
+                                  priorityScore={{ High: 90, Medium: 50, Low: 20 }[task.priority as 'High'|'Medium'|'Low']}
+                                  showLabel={false}
+                                />
                                 {task.deadline && (
                                   <span className={`badge ${getDeadlineClass(task)} ms-2`}>
                                     {isTaskOverdue(task) ? t('dashboard.overdue') : t('dashboard.dueSoon')}
@@ -637,9 +663,10 @@ const DashboardPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </DataState>
             </div>
           </div>
         </div>
@@ -944,6 +971,7 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

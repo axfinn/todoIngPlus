@@ -5,7 +5,16 @@
     "login": "登录",
     "register": "注册",
     "logout": "退出",
-    "reports": "报告"
+    "reports": "报告",
+    "events": "事件",
+    "reminders": "提醒",
+    "unified": "统一看板"
+  },
+  "github": {
+    "fork": "在 GitHub 上 Fork",
+    "star": "Star",
+    "loading": "加载中...",
+    "error": "加载失败"
   },
   "auth": {
     "login": {
@@ -41,7 +50,6 @@
       "captcha": "验证码",
       "enterCaptcha": "输入验证码",
       "refreshCaptcha": "刷新验证码",
-      "verifyCaptcha": "验证验证码",
       "captchaRequired": "请先验证图片验证码",
       "captchaVerified": "验证码已验证",
       "emailCode": "邮箱验证码",
@@ -68,6 +76,16 @@
       }
     }
   },
+  "unified": {
+    "title": "统一看板",
+    "type": "类型",
+    "titleCol": "标题",
+    "schedule": "计划时间",
+    "countdown": "倒计时",
+    "daysLeft": "剩余天数",
+  "severity": "严重度",
+    "empty": "暂无即将到来的事项"
+  },
   "dashboard": {
     "title": "任务面板",
     "newTask": "新建任务",
@@ -89,7 +107,6 @@
     "assignee": "负责人",
     "deadline": "截止日期",
     "scheduledDate": "计划日期",
-    "createTask": "创建任务",
     "noTasks": "暂无任务",
     "edit": "编辑",
     "delete": "删除",
@@ -258,5 +275,90 @@
   },
   "footer": {
     "copyright": "todoIng 任务管理系统"
+  },
+  "events": {
+    "title": "事件与日历",
+    "create": "创建事件",
+    "createNew": "新建事件",
+    "all": "全部事件",
+    "upcoming": "即将到来的事件 ({{days}} 天)",
+    "noUpcoming": "暂无即将发生的事件",
+    "noEvents": "暂无事件",
+    "searchPlaceholder": "搜索事件...",
+    "eventDate": "事件日期",
+    "eventType": "事件类型",
+    "importance": "重要级别",
+    "allDay": "全天",
+    "recurrence": "重复",
+    "none": "无",
+    "custom": "自定义",
+    "birthday": "生日",
+    "anniversary": "纪念日",
+    "holiday": "节日",
+    "meeting": "会议",
+    "deadline": "截止",
+    "repeat": "重复此事件",
+    "repeatPattern": "重复模式",
+    "repeatEvery": "每",
+    "daily": "每天",
+    "weekly": "每周",
+    "monthly": "每月",
+    "yearly": "每年",
+    "endDate": "结束日期(可选)",
+    "startTime": "开始时间",
+    "endTime": "结束时间",
+    "location": "地点",
+    "deleteConfirm": "确定要删除该事件吗？",
+    "creating": "创建中...",
+    "repeats": "每 {{interval}} 个 {{pattern}} 重复",
+    "actions": "操作",
+    "validation": {
+      "titleRequired": "标题为必填项",
+      "dateRequired": "事件日期为必填项",
+      "importanceRange": "重要级别必须在 1 到 5 之间"
+    },
+    "list": "事件列表"
+  },
+  "reminders": {
+    "title": "提醒",
+    "upcoming": "即将到来的提醒",
+    "noReminders": "暂无提醒",
+    "create": "创建提醒",
+    "message": "消息",
+    "remindAt": "提醒时间",
+    "type": "类型",
+    "email": "邮件",
+    "app": "站内",
+    "snooze": "延后",
+    "minutes": "分钟",
+    "deleteConfirm": "确定要删除该提醒吗？",
+    "upcomingHours": "未来 {{hours}} 小时提醒",
+    "noUpcoming": "未来暂无提醒",
+    "all": "全部提醒",
+    "eventLabel": "事件",
+    "daysLeft": "D+{{days}}",
+    "snoozeMinutes": "延后 {{minutes}} 分钟",
+    "snoozeHour": "延后 1 小时",
+    "eventSelect": "事件 *",
+    "selectEvent": "选择事件",
+    "customMessage": "自定义消息",
+    "advanceDays": "提前天数",
+    "reminderTime": "提醒时间 (HH:MM)",
+    "reminderType": "提醒方式",
+    "creating": "创建中...",
+    "active": "启用",
+    "inactive": "禁用",
+    "unknownEvent": "未知事件",
+    "type_app": "应用",
+    "type_email": "邮件",
+    "type_both": "双重",
+    "addTime": "添加时间",
+    "validation": {
+      "eventRequired": "请选择事件",
+      "timeRequired": "至少需要一个提醒时间",
+      "timeFormat": "时间格式需为 HH:MM",
+      "advanceNonNegative": "提前天数必须 ≥ 0"
+    },
+    "list": "提醒列表"
   }
 }

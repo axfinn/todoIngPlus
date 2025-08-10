@@ -103,3 +103,48 @@ func Send(to, code string) error {
 	m.SetBody("text/html", fmt.Sprintf("<p>您的验证码: <b>%s</b> (10分钟内有效)</p>", code))
 	return d.DialAndSend(m)
 }
+
+// SendGeneric 发送通用邮件
+// SendGeneric 发送通用邮件（提醒等）。
+// 优先使用 REMINDER_EMAIL_* 一组变量；如果不完整，则回退到 EMAIL_* 验证码登录邮箱配置。
+// 变量说明：
+// REMINDER_EMAIL_HOST / USER / PASS / PORT / FROM （可选）
+// EMAIL_HOST / USER / PASS / PORT / FROM （登录验证码原有配置，作为回退）
+func SendGeneric(to, subject, htmlBody string) error {
+	// 优先读取提醒专用配置
+	host := os.Getenv("REMINDER_EMAIL_HOST")
+	user := os.Getenv("REMINDER_EMAIL_USER")
+	pass := os.Getenv("REMINDER_EMAIL_PASS")
+	port := os.Getenv("REMINDER_EMAIL_PORT")
+	from := os.Getenv("REMINDER_EMAIL_FROM")
+
+	// 如果任一核心字段缺失则回退到通用邮箱配置
+	if host == "" || user == "" || pass == "" {
+		host = os.Getenv("EMAIL_HOST")
+		user = os.Getenv("EMAIL_USER")
+		pass = os.Getenv("EMAIL_PASS")
+		port = os.Getenv("EMAIL_PORT")
+		if from == "" { // 只有在专用 FROM 未设置时才尝试通用 FROM
+			from = os.Getenv("EMAIL_FROM")
+		}
+	}
+
+	if host == "" || user == "" || pass == "" { // 仍不完整
+		return fmt.Errorf("email config incomplete (reminder & fallback both missing)")
+	}
+
+	if port == "" { // 允许未提供端口，默认 587
+		port = "587"
+	}
+
+	p := 587
+	fmt.Sscanf(port, "%d", &p)
+	d := mail.NewDialer(host, p, user, pass)
+	m := mail.NewMessage()
+	if from == "" { from = user }
+	m.SetHeader("From", from)
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/html", htmlBody)
+	return d.DialAndSend(m)
+}

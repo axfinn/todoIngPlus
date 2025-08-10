@@ -10,6 +10,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/axfinn/todoIng/backend-go/internal/models"
+	nHub "github.com/axfinn/todoIng/backend-go/internal/notifications"
+	"go.mongodb.org/mongo-driver/bson"
+	"github.com/axfinn/todoIng/backend-go/internal/email"
 )
 
 // ReminderScheduler 提醒调度器
@@ -20,16 +23,20 @@ type ReminderScheduler struct {
 	ticker          *time.Ticker
 	stopChan        chan bool
 	running         bool
+	notificationSvc *NotificationService
+	hub             *nHub.Hub
 }
 
 // NewReminderScheduler 创建提醒调度器
-func NewReminderScheduler(db *mongo.Database) *ReminderScheduler {
+func NewReminderScheduler(db *mongo.Database, hub *nHub.Hub) *ReminderScheduler {
 	return &ReminderScheduler{
 		db:              db,
 		reminderService: NewReminderService(db),
 		eventService:    NewEventService(db),
 		stopChan:        make(chan bool),
 		running:         false,
+	notificationSvc: NewNotificationService(db),
+	hub:             hub,
 	}
 }
 
@@ -173,54 +180,48 @@ func (s *ReminderScheduler) getEventTypeDescription(eventType string) string {
 
 // sendAppNotification 发送应用内通知
 func (s *ReminderScheduler) sendAppNotification(ctx context.Context, userID primitive.ObjectID, message string, event models.Event) error {
-	// 这里可以实现WebSocket推送或者保存到通知表
-	// 暂时只记录日志
 	log.Printf("App notification for user %s: %s", userID.Hex(), message)
-	
-	// TODO: 实现WebSocket推送或保存到notifications集合
-	// 可以考虑使用以下方式：
-	// 1. WebSocket实时推送
-	// 2. 保存到数据库的notifications集合，前端轮询
-	// 3. 使用Redis发布订阅模式
-	
-	return nil
+	var eventID *primitive.ObjectID
+	if !event.ID.IsZero() { eid := event.ID; eventID = &eid }
+	n, err := s.notificationSvc.Create(ctx, models.NotificationCreate{
+		UserID:  userID,
+		Type:    "reminder",
+		Message: message,
+		EventID: eventID,
+		Metadata: map[string]interface{}{"event_title": event.Title, "event_type": event.EventType},
+	})
+	if err == nil && s.hub != nil { s.hub.Broadcast(n) }
+	return err
 }
 
 // sendEmailReminder 发送邮件提醒
 func (s *ReminderScheduler) sendEmailReminder(ctx context.Context, userID primitive.ObjectID, message string, event models.Event) error {
-	// 获取用户邮箱
 	userEmail, err := s.getUserEmail(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to get user email: %w", err)
-	}
-
-	if userEmail == "" {
-		return fmt.Errorf("user email not found")
-	}
-
-	// 生成邮件内容
+	if err != nil { return fmt.Errorf("failed to get user email: %w", err) }
+	if userEmail == "" { return fmt.Errorf("user email not found") }
 	subject := fmt.Sprintf("TodoIng 提醒：%s", event.Title)
 	body := s.generateEmailBody(message, event)
-
-	// TODO: 集成现有的邮件服务
-	// 这里应该调用现有的邮件发送服务
-	log.Printf("Email reminder for %s: %s", userEmail, subject)
-	log.Printf("Email body: %s", body)
-	
-	// 暂时只记录日志，实际部署时需要集成邮件服务
-	// emailService := email.NewEmailService()
-	// return emailService.SendEmail(userEmail, subject, body)
-	
+	if err := email.SendGeneric(userEmail, subject, body); err != nil {
+		// 不再模拟，直接返回错误（使用登录同一邮箱配置）
+		log.Printf("Email send failed %s: %v", userEmail, err)
+		return err
+	}
+	log.Printf("Email sent to %s subject=%s", userEmail, subject)
+	if s.notificationSvc != nil && s.hub != nil {
+		var eventID *primitive.ObjectID; if !event.ID.IsZero() { eid := event.ID; eventID = &eid }
+		n, err2 := s.notificationSvc.Create(ctx, models.NotificationCreate{UserID: userID, Type: "email", Message: fmt.Sprintf("Email sent: %s", subject), EventID: eventID})
+		if err2 == nil { s.hub.Broadcast(n) }
+	}
 	return nil
 }
 
 // getUserEmail 获取用户邮箱
 func (s *ReminderScheduler) getUserEmail(ctx context.Context, userID primitive.ObjectID) (string, error) {
-	// TODO: 从用户集合中获取邮箱
-	// 这里应该查询users集合获取用户邮箱
-	
-	// 暂时返回空字符串，实际部署时需要实现
-	return "", nil
+	users := s.db.Collection("users")
+	var doc struct { Email string `bson:"email"` }
+	err := users.FindOne(ctx, bson.M{"_id": userID}).Decode(&doc)
+	if err != nil { return "", err }
+	return doc.Email, nil
 }
 
 // generateEmailBody 生成邮件正文

@@ -38,7 +38,7 @@ i18n
     react: {
       useSuspense: false
     }
-  }, (err, t) => {
+  }, (err) => {
     if (err) return console.log('i18n初始化失败', err);
   });
 

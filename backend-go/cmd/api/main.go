@@ -128,6 +128,8 @@ import (
 	"github.com/axfinn/todoIng/backend-go/internal/captcha"
 	"github.com/axfinn/todoIng/backend-go/internal/email"
 	"github.com/axfinn/todoIng/backend-go/internal/observability"
+	"github.com/axfinn/todoIng/backend-go/internal/notifications"
+	"github.com/axfinn/todoIng/backend-go/internal/services"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 
@@ -194,6 +196,11 @@ func main() {
 	handler := r
 	observability.LogInfo("Router initialized")
 
+	// 打印关键功能开关状态
+	envCaptcha := os.Getenv("ENABLE_CAPTCHA")
+	envEmailVerify := os.Getenv("ENABLE_EMAIL_VERIFICATION")
+	observability.LogInfo("Feature flags -> ENABLE_CAPTCHA=%s ENABLE_EMAIL_VERIFICATION=%s", envCaptcha, envEmailVerify)
+
 	// Swagger 文档路由
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
@@ -219,6 +226,16 @@ func main() {
 	api.SetupEventRoutes(r, &api.EventDeps{DB: db})
 	api.SetupReminderRoutes(r, &api.ReminderDeps{DB: db})
 	api.SetupDashboardRoutes(r, &api.DashboardDeps{DB: db})
+	api.SetupUnifiedRoutes(r, &api.UnifiedDeps{DB: db})
+
+	// 通知与调度中心
+	hub := notifications.NewHub()
+	notificationSvc := services.NewNotificationService(db)
+	api.SetupNotificationRoutes(r, &api.NotificationDeps{DB: db, Service: notificationSvc, Hub: hub})
+
+	// 启动提醒调度器（增强：带 hub）
+	reminderScheduler := services.NewReminderScheduler(db, hub)
+	go reminderScheduler.Start()
 	observability.LogInfo("All API routes configured")
 
 	port := os.Getenv("PORT")

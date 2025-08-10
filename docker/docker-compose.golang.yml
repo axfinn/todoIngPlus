@@ -57,45 +57,12 @@ services:
     ports:
       - "5004:5004"
     environment:
-      # 服务配置
-      PORT: 5004
-      GIN_MODE: release
-      
-      # 数据库配置
+      # 仅保留 .env 中未定义或需要固定的运行时变量
+      PORT: 5004                # 服务端口（代码使用）
+      GIN_MODE: release         # 运行模式
       MONGO_URI: mongodb://admin:admin123@mongodb:27017/todoing?authSource=admin
       REDIS_URL: redis://:redis123@redis:6379
-      
-      # JWT 配置
-      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_change_in_production}
-      JWT_EXPIRY: ${JWT_EXPIRY:-24h}
-      
-      # 功能开关
-      DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-false}
-      ENABLE_CAPTCHA: ${ENABLE_CAPTCHA:-true}
-      ENABLE_EMAIL_VERIFICATION: ${ENABLE_EMAIL_VERIFICATION:-false}
-      
-      # 默认管理员账户
-      DEFAULT_USERNAME: ${DEFAULT_USERNAME:-admin}
-      DEFAULT_EMAIL: ${DEFAULT_EMAIL:-admin@example.com}
-      DEFAULT_PASSWORD: ${DEFAULT_PASSWORD:-admin123}
-      
-      # 邮件配置
-      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
-      EMAIL_PORT: ${EMAIL_PORT:-587}
-      EMAIL_SECURE: ${EMAIL_SECURE:-false}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASS: ${EMAIL_PASS}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@todoing.com}
-      
-      # 日志配置
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      LOG_FILE: ${LOG_FILE:-/app/logs/app.log}
-      
-      # 安全配置
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:80}
-      RATE_LIMIT: ${RATE_LIMIT:-100}
-      
-      # gRPC 配置
+      LOG_FILE: /app/logs/app.log
       GRPC_PORT: 9090
       ENABLE_GRPC: ${ENABLE_GRPC:-true}
       
@@ -156,11 +123,20 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
-      target: production
+      # 传递 Vite 构建期需要的变量（只有构建阶段读取，运行阶段环境变量不会影响已编译代码）
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_ENABLE_CAPTCHA: ${ENABLE_CAPTCHA:-true}
+        VITE_ENABLE_EMAIL_VERIFICATION: ${ENABLE_EMAIL_VERIFICATION:-false}
+        VITE_DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-false}
+        VITE_APP_NAME: ${APP_NAME:-TodoIng}
+        VITE_APP_VERSION: ${APP_VERSION:-1.0.0}
     container_name: todoing_frontend_golang
     restart: unless-stopped
     ports:
       - "3000:80"
+    env_file:
+      - .env
     environment:
       VITE_API_BASE_URL: http://localhost:5004/api
       VITE_GRPC_URL: http://localhost:9090

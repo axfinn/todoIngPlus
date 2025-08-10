@@ -87,11 +87,15 @@ func (d *AuthDeps) Register(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	users := d.DB.Collection("users")
-	// email verify
+	// email verify (dev bypass: if ENABLE_EMAIL_VERIFICATION=true 但未配置 EMAIL_HOST 则跳过)
 	if os.Getenv("ENABLE_EMAIL_VERIFICATION") == "true" {
-		if err := d.EmailCodes.Verify(req.EmailCodeId, strings.ToLower(req.Email), req.EmailCode); err != nil {
-			JSON(w, 400, map[string]string{"msg": err.Error()})
-			return
+		if os.Getenv("EMAIL_HOST") == "" { // dev bypass
+			observability.LogWarn("Email verification enabled but EMAIL_HOST missing, bypassing code check for dev")
+		} else {
+			if err := d.EmailCodes.Verify(req.EmailCodeId, strings.ToLower(req.Email), req.EmailCode); err != nil {
+				JSON(w, 400, map[string]string{"msg": err.Error()})
+				return
+			}
 		}
 	}
 	// uniqueness
@@ -100,21 +104,28 @@ func (d *AuthDeps) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pwHash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
-	user := models.User{Username: req.Username, Email: strings.ToLower(req.Email), Password: string(pwHash), CreatedAt: time.Now()}
-	res, err := users.InsertOne(ctx, user)
+	createdAt := time.Now()
+	// 不直接用 models.User 以避免将 _id 作为字符串插入，确保 Mongo 生成 ObjectID
+	doc := bson.M{"username": req.Username, "email": strings.ToLower(req.Email), "password": string(pwHash), "createdAt": createdAt}
+	res, err := users.InsertOne(ctx, doc)
 	if err != nil {
 		JSON(w, 500, map[string]string{"msg": "DB error"})
 		return
 	}
-	id := res.InsertedID.(primitive.ObjectID).Hex()
+	objID, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		JSON(w, 500, map[string]string{"msg": "Failed to create user id"})
+		return
+	}
+	id := objID.Hex()
 	token, _ := auth.Generate(id, time.Hour)
 
 	userResponse := UserResponse{
 		ID:        id,
-		Username:  user.Username,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.CreatedAt, // 使用CreatedAt作为初始UpdatedAt
+		Username:  req.Username,
+		Email:     strings.ToLower(req.Email),
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 	}
 
 	JSON(w, 201, map[string]interface{}{
@@ -156,8 +167,44 @@ func (d *AuthDeps) Login(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	users := d.DB.Collection("users")
-	var user models.User
+	// 为确保获取到真正的 Mongo ObjectID，这里使用专门的结构体而非 models.User 的 string ID
+	type userRecord struct {
+		ID        primitive.ObjectID `bson:"_id"`
+		Username  string             `bson:"username"`
+		Email     string             `bson:"email"`
+		Password  string             `bson:"password"`
+		CreatedAt time.Time          `bson:"createdAt"`
+	}
+	var user userRecord
 	err := users.FindOne(ctx, bson.M{"email": normalizedEmail}).Decode(&user)
+	if err != nil {
+		// 兼容旧存储：_id 可能是字符串
+		var legacy struct {
+			ID        string    `bson:"_id"`
+			Username  string    `bson:"username"`
+			Email     string    `bson:"email"`
+			Password  string    `bson:"password"`
+			CreatedAt time.Time `bson:"createdAt"`
+		}
+		if err2 := users.FindOne(ctx, bson.M{"email": normalizedEmail}).Decode(&legacy); err2 == nil {
+			// 如果 legacy.ID 是合法 ObjectID，则转换；否则提示需要重新注册
+			if primitive.IsValidObjectID(legacy.ID) {
+				objID, _ := primitive.ObjectIDFromHex(legacy.ID)
+				user = userRecord{ID: objID, Username: legacy.Username, Email: legacy.Email, Password: legacy.Password, CreatedAt: legacy.CreatedAt}
+			} else {
+				JSON(w, 400, map[string]string{"msg": "Legacy account not compatible with events/reminders. Please re-register."})
+				return
+			}
+		} else {
+			observability.LogWarn("Login failed - user not found for email: %s", normalizedEmail)
+			if req.EmailCode != "" && req.EmailCodeId != "" && os.Getenv("ENABLE_EMAIL_VERIFICATION") == "true" {
+				JSON(w, 401, map[string]string{"msg": "User does not exist"})
+				return
+			}
+			JSON(w, 401, map[string]string{"msg": "Invalid credentials"})
+			return
+		}
+	}
 	if err != nil {
 		observability.LogWarn("Login failed - user not found for email: %s", normalizedEmail)
 		// 如果是邮箱验证码登录但用户不存在，返回用户不存在的错误
@@ -189,7 +236,7 @@ func (d *AuthDeps) Login(w http.ResponseWriter, r *http.Request) {
 		observability.LogInfo("Password verification successful for user: %s", normalizedEmail)
 	}
 
-	token, _ := auth.Generate(user.ID, time.Hour)
+	token, _ := auth.Generate(user.ID.Hex(), time.Hour)
 	observability.LogInfo("Login successful for user: %s (ID: %s)", normalizedEmail, user.ID)
 	JSON(w, 200, map[string]string{"token": token})
 }

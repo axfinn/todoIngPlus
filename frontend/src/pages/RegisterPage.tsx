@@ -36,22 +36,19 @@ const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     password2: '',
-    captcha: '',
     emailCode: ''
   });
   
-  const [captchaData, setCaptchaData] = useState<{ image: string; id: string } | null>(null);
-  const [isCaptchaFetching, setIsCaptchaFetching] = useState(false);
+  // captcha 功能已禁用，相关状态移除
   const [emailCodeData, setEmailCodeData] = useState<{ id: string } | null>(null);
   const [isEmailCodeSending, setIsEmailCodeSending] = useState(false);
   const [emailCodeSent, setEmailCodeSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [captchaVerified, setCaptchaVerified] = useState(false);
   
   const { username, email, password, password2, emailCode } = formData;
   
   // 检查环境变量
-  const isCaptchaEnabled = import.meta.env.VITE_ENABLE_CAPTCHA === 'true';
+  // const isCaptchaEnabled = import.meta.env.VITE_ENABLE_CAPTCHA === 'true'; // disabled
   const isEmailVerificationEnabled = import.meta.env.VITE_ENABLE_EMAIL_VERIFICATION === 'true';
   const isRegistrationDisabled = import.meta.env.VITE_DISABLE_REGISTRATION === 'true';
   
@@ -186,28 +183,7 @@ const RegisterPage: React.FC = () => {
   };
 
   // 验证图片验证码
-  const verifyCaptcha = async () => {
-    if (!captcha || !captchaData) {
-      alert(t('auth.register.enterCaptcha'));
-      return;
-    }
-    
-    try {
-      // 发送一个简单的请求来验证验证码
-      await api.post('/auth/verify-captcha', {
-        captcha,
-        captchaId: captchaData.id
-      });
-      
-      // 验证成功
-      setCaptchaVerified(true);
-      alert(t('auth.register.captchaVerified'));
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.msg || 'Failed to verify captcha');
-      refreshCaptcha(); // 刷新验证码
-    }
-  };
+  // captcha 验证逻辑移除
 
   if (isLoading) {
     return (

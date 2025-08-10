@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,6 +42,13 @@ func SetupTestDB(t *testing.T) *TestDB {
 	dbName := "todoing_test_" + generateTestDBName()
 	db := client.Database(dbName)
 
+	// 预检测简单写权限，若无权限则跳过（本地未配鉴权 Mongo）
+	col := db.Collection("_test_permission_probe")
+	if _, err := col.InsertOne(ctx, bson.M{"ts": time.Now()}); err != nil {
+		if strings.Contains(err.Error(), "Unauthorized") {
+			t.Skip("Skipping tests: unauthorized Mongo (set TEST_MONGO_URI with credentials).")
+		}
+	}
 	return &TestDB{
 		Client: client,
 		DB:     db,

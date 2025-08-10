@@ -119,13 +119,33 @@ check_env_file() {
 # 检查 Docker 和 Docker Compose
 check_docker() {
     if ! command -v docker &> /dev/null; then
-        print_message $RED "错误: Docker 未安装"
+        print_message $RED "错误: 未检测到 docker 可执行文件，请先安装 Docker Desktop 或 Docker Engine"
         exit 1
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
-        print_message $RED "错误: Docker Compose 未安装"
+    # 检测 docker daemon 是否可用
+    if ! docker info > /dev/null 2>&1; then
+        print_message $RED "错误: 无法连接到 Docker daemon (docker info 失败)"
+        print_message $YELLOW "解决步骤 (MacOS):"
+        print_message $YELLOW "  1. 启动 Docker Desktop 应用"
+        print_message $YELLOW "  2. 等待右上角鲸鱼图标稳定 (大约 10~30 秒)"
+        print_message $YELLOW "  3. 重新执行: ./deploy.sh golang up --build"
+        print_message $YELLOW "Linux 服务器: 确保已执行 sudo systemctl start docker"
         exit 1
+    fi
+
+    # 兼容新版本 docker compose 插件
+    if ! command -v docker-compose &> /dev/null; then
+        if docker compose version > /dev/null 2>&1; then
+            # 创建一个包装函数，复用后续逻辑
+            docker_compose_wrapper() { docker compose "$@"; }
+            export -f docker_compose_wrapper
+            alias docker-compose=docker_compose_wrapper
+        else
+            print_message $RED "错误: 未检测到 docker-compose 也未检测到 docker compose 插件"
+            print_message $YELLOW "请安装 docker compose 插件，或单独安装 docker-compose 二进制"
+            exit 1
+        fi
     fi
 }
 
@@ -137,7 +157,18 @@ execute_compose() {
     local args=("$@")
 
     print_message $BLUE "执行: docker-compose -f $compose_file $operation ${args[*]}"
-    docker-compose -f "$compose_file" "$operation" "${args[@]}"
+    if ! docker-compose -f "$compose_file" "$operation" "${args[@]}"; then
+        print_message $RED "docker-compose 执行失败 (操作: $operation)"
+        # 常见错误快速诊断
+        if ! docker info > /dev/null 2>&1; then
+            print_message $RED "原因: Docker daemon 未运行"
+        fi
+        print_message $YELLOW "可尝试:"
+        print_message $YELLOW "  1. 重启 Docker Desktop / systemctl restart docker"
+        print_message $YELLOW "  2. 清理悬挂资源: docker system prune -f (谨慎)"
+        print_message $YELLOW "  3. 再次执行: ./deploy.sh golang up --build"
+        exit 1
+    fi
 }
 
 # 主函数

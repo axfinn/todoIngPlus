@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/axfinn/todoIng/backend-go/internal/captcha"
@@ -22,8 +23,18 @@ type CaptchaDeps struct{ Store *captcha.Store }
 // @Success 200 {object} map[string]string "验证码图片和ID"
 // @Failure 500 {object} map[string]string "服务器内部错误"
 // @Router /api/auth/captcha [get]
+func isCaptchaEnabled() bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv("ENABLE_CAPTCHA")))
+	switch v {
+	case "true", "1", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 func (d *CaptchaDeps) Generate(w http.ResponseWriter, r *http.Request) {
-	if os.Getenv("ENABLE_CAPTCHA") != "true" {
+	if !isCaptchaEnabled() {
 		// 兼容前端：返回一个透明的 1x1 SVG 占位图片 + msg，前端拿到非错误结构即可继续
 		placeholder := "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(`<svg xmlns='http://www.w3.org/2000/svg' width='80' height='30'></svg>`))
 		JSON(w, 200, map[string]string{"image": placeholder, "id": "disabled", "msg": "captcha disabled"})
@@ -53,7 +64,7 @@ func (d *CaptchaDeps) Generate(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} map[string]string "验证失败或请求参数错误"
 // @Router /api/auth/verify-captcha [post]
 func (d *CaptchaDeps) Verify(w http.ResponseWriter, r *http.Request) {
-	if os.Getenv("ENABLE_CAPTCHA") != "true" {
+	if !isCaptchaEnabled() {
 		JSON(w, 200, map[string]string{"msg": "Captcha bypassed"})
 		return
 	}
