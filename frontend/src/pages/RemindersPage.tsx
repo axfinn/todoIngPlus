@@ -33,6 +33,7 @@ interface ReminderItem {
     title: string;
     event_date: string;
   };
+  _invalid_id?: boolean; // 标记后端返回的ID无效，用于显示提示
 }
 
 // UpcomingReminder (后台 upcoming 返回的结构)
@@ -89,7 +90,7 @@ const RemindersPage: React.FC = () => {
     try {
       const response = await api.get('/reminders');
       // 后端返回 {reminders:[{...}]}
-      const list = response.data.reminders || [];
+  const list = response.data.reminders || [];
       // 归一化 reminder_times / reminderTimes，防止 null 导致渲染 join 报错
       const normalized: ReminderItem[] = list.map((r: any) => {
         let times: string[] = [];
@@ -108,11 +109,22 @@ const RemindersPage: React.FC = () => {
           } : r.event
         };
       });
-	const valid = normalized.filter(r => isValidHex24(r.id));
-      if (valid.length !== normalized.length) {
-        console.warn('Filtered invalid reminder IDs', { dropped: normalized.length - valid.length });
+      // 不再直接过滤无效ID，生成临时ID以便列表显示，便于调试后端问题
+      const enriched: ReminderItem[] = normalized.map((r: any, idx: number) => {
+        if (isValidHex24(r.id)) return r;
+        // 尝试解析可能的 MongoDB Extended JSON 格式 { _id: { $oid: '...' } }
+        const maybeOid = r._id?.$oid;
+        if (maybeOid && isValidHex24(maybeOid)) return { ...r, id: maybeOid, _invalid_id: true };
+        return {
+          ...r,
+          id: `temp-${idx}-${r.event_id || 'noevent'}`,
+          _invalid_id: true
+        };
+      });
+      if (enriched.some(r => r._invalid_id)) {
+        console.warn('Some reminders have invalid IDs from backend, using temporary IDs');
       }
-	setReminders(valid);
+	setReminders(enriched);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch reminders');
     } finally {
@@ -316,10 +328,10 @@ const RemindersPage: React.FC = () => {
                   </thead>
                   <tbody>
                     {list.map((reminder) => (
-                      <tr key={reminder.id} data-reminder-id={reminder.id}>
+                      <tr key={reminder.id} data-reminder-id={reminder.id} className={reminder._invalid_id ? 'table-warning' : ''}>
                         <td>
                           {reminder.custom_message || '-'}
-                          <div className="text-muted small">ID: {reminder.id}</div>
+                          <div className="text-muted small">ID: {reminder.id}{reminder._invalid_id && <span className="ms-2 badge bg-warning text-dark">invalid</span>}</div>
                         </td>
                         <td>{reminder.event?.title || getEventTitle(reminder.event_id)}</td>
             <td>{Array.isArray(reminder.reminder_times) ? reminder.reminder_times.join(', ') : ''}</td>
