@@ -228,6 +228,7 @@
   "common": {
   "loading": "加载中...",
   "refresh": "刷新",
+  "title": "标题",
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
@@ -238,6 +239,13 @@
     "back": "返回",
     "confirm": "确认",
     "actions": "操作"
+  },
+  "quick": {
+    "nowPlus1h": "+1小时",
+    "tonight": "今晚20:00",
+    "tomorrowMorning": "明早09:00",
+    "fridayEvening": "周五18:00",
+    "nextMonday": "下周一09:00"
   },
   "home": {
     "title": "欢迎使用 todoIng",

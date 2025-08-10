@@ -85,6 +85,7 @@
   "common": {
   "loading": "Loading...",
   "refresh": "Refresh",
+  "title": "Title",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -101,6 +102,16 @@
     "description": "A modern task management application to help you organize your work and life.",
     "getStarted": "Get Started",
     "login": "Login"
+  },
+  "dashboard": {
+    "description": "Description"
+  },
+  "quick": {
+    "nowPlus1h": "+1h",
+    "tonight": "Tonight 20:00",
+    "tomorrowMorning": "Tomorrow 09:00",
+    "fridayEvening": "Friday 18:00",
+    "nextMonday": "Next Monday 09:00"
   },
   "reports": {
     "title": "Reports",
