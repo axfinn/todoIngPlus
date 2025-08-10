@@ -9,6 +9,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/ReportsPage';
+import EventsPage from './pages/EventsPage';
+import RemindersPage from './pages/RemindersPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -114,6 +116,22 @@ const App: React.FC = () => {
                   <li className="nav-item">
                     <Link className="nav-link" to="/dashboard">
                       {t('nav.dashboard')}
+                    </Link>
+                  </li>
+                )}
+                {isAuthenticated && (
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/events">
+                      <i className="bi bi-calendar-event me-1"></i>
+                      Events
+                    </Link>
+                  </li>
+                )}
+                {isAuthenticated && (
+                  <li className="nav-item">
+                    <Link className="nav-link" to="/reminders">
+                      <i className="bi bi-bell me-1"></i>
+                      Reminders
                     </Link>
                   </li>
                 )}
@@ -232,6 +250,16 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/events" element={
+            <ProtectedRoute>
+              <EventsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/reminders" element={
+            <ProtectedRoute>
+              <RemindersPage />
             </ProtectedRoute>
           } />
           <Route path="/reports" element={
