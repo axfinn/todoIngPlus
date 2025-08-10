@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"time"
+	"sort"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,6 +22,35 @@ type ReminderService struct {
 	eventColl    *mongo.Collection
 }
 
+// SimpleReminderDTO 用于前端简化显示的提醒数据
+type SimpleReminderDTO struct {
+	ID            primitive.ObjectID `bson:"_id" json:"id"`
+	EventID       primitive.ObjectID `bson:"event_id" json:"event_id"`
+	EventTitle    string             `bson:"event_title" json:"event_title"`
+	EventDate     time.Time          `bson:"event_date" json:"event_date"`
+	AdvanceDays   int                `bson:"advance_days" json:"advance_days"`
+	ReminderTimes []string           `bson:"reminder_times" json:"reminder_times"`
+	ReminderType  string             `bson:"reminder_type" json:"reminder_type"`
+	CustomMessage string             `bson:"custom_message" json:"custom_message,omitempty"`
+	IsActive      bool               `bson:"is_active" json:"is_active"`
+	NextSend      *time.Time         `bson:"next_send" json:"next_send,omitempty"`
+	LastSent      *time.Time         `bson:"last_sent" json:"last_sent,omitempty"`
+	CreatedAt     time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt     time.Time          `bson:"updated_at" json:"updated_at"`
+}
+
+// PreviewResult 预览结果
+type PreviewResult struct {
+	EventID        primitive.ObjectID `json:"event_id"`
+	EventTitle     string             `json:"event_title"`
+	EventDate      *time.Time         `json:"event_date,omitempty"`
+	AdvanceDays    int                `json:"advance_days"`
+	ReminderTimes  []string           `json:"reminder_times"`
+	NextSend       *time.Time         `json:"next_send,omitempty"`
+	ScheduleText   string             `json:"schedule_text"`
+	ValidationErrs []string           `json:"validation_errors,omitempty"`
+}
+
 // NewReminderService 创建提醒服务
 func NewReminderService(db *mongo.Database) *ReminderService {
 	return &ReminderService{
@@ -27,6 +58,36 @@ func NewReminderService(db *mongo.Database) *ReminderService {
 		reminderColl: db.Collection("reminders"),
 		eventColl:    db.Collection("events"),
 	}
+}
+
+// CreateImmediateTestReminder 创建一个立即发送/短延迟的测试提醒（不通过正常 next_send 计算）
+func (s *ReminderService) CreateImmediateTestReminder(ctx context.Context, userID, eventID primitive.ObjectID, message string, delaySeconds int) (*models.Reminder, *models.Event, error) {
+	if delaySeconds < 0 { delaySeconds = 0 }
+	if delaySeconds > 3600 { delaySeconds = 3600 }
+	// 获取事件
+	var event models.Event
+	if err := s.eventColl.FindOne(ctx, bson.M{"_id": eventID, "user_id": userID}).Decode(&event); err != nil {
+		if err == mongo.ErrNoDocuments { return nil, nil, fmt.Errorf("event not found") }
+		return nil, nil, fmt.Errorf("failed to find event: %w", err)
+	}
+	now := time.Now()
+	r := &models.Reminder{
+		ID:            primitive.NewObjectID(),
+		EventID:       eventID,
+		UserID:        userID,
+		AdvanceDays:   0,
+		ReminderTimes: []string{now.Add(time.Duration(delaySeconds) * time.Second).Format("15:04")},
+		ReminderType:  "app",
+		CustomMessage: message,
+		IsActive:      true,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	// 直接设定 next_send 为 now+delaySeconds
+	ns := now.Add(time.Duration(delaySeconds) * time.Second)
+	r.NextSend = &ns
+	if _, err := s.reminderColl.InsertOne(ctx, r); err != nil { return nil, nil, fmt.Errorf("failed to create test reminder: %w", err) }
+	return r, &event, nil
 }
 
 // CreateReminder 创建提醒
@@ -90,6 +151,23 @@ func (s *ReminderService) GetReminder(ctx context.Context, userID, reminderID pr
 		},
 		{
 			"$unwind": "$event",
+		},
+		{ // 明确投影，避免因潜在 BSON 映射问题导致字段丢失为零值
+			"$project": bson.M{
+				"_id":            1,
+				"event_id":       1,
+				"user_id":        1,
+				"advance_days":   1,
+				"reminder_times": 1,
+				"reminder_type":  1,
+				"custom_message": 1,
+				"is_active":      1,
+				"last_sent":      1,
+				"next_send":      1,
+				"created_at":     1,
+				"updated_at":     1,
+				"event":          "$event",
+			},
 		},
 	}
 
@@ -222,6 +300,23 @@ func (s *ReminderService) ListReminders(ctx context.Context, userID primitive.Ob
 			},
 		},
 		{"$unwind": "$event"},
+		{ // 显式投影，解决前端看到的零值问题
+			"$project": bson.M{
+				"_id":            1,
+				"event_id":       1,
+				"user_id":        1,
+				"advance_days":   1,
+				"reminder_times": 1,
+				"reminder_type":  1,
+				"custom_message": 1,
+				"is_active":      1,
+				"last_sent":      1,
+				"next_send":      1,
+				"created_at":     1,
+				"updated_at":     1,
+				"event":          "$event",
+			},
+		},
 	}
 
 	// 计算总数
@@ -270,6 +365,114 @@ func (s *ReminderService) ListReminders(ctx context.Context, userID primitive.Ob
 		PageSize:   pageSize,
 		TotalPages: totalPages,
 	}, nil
+}
+
+// ListSimpleReminders 返回简化列表（无分页，最多100条，便于前端快速展示）
+func (s *ReminderService) ListSimpleReminders(ctx context.Context, userID primitive.ObjectID, activeOnly bool, limit int) ([]SimpleReminderDTO, error) {
+	if limit <= 0 || limit > 100 { limit = 50 }
+	match := bson.M{"user_id": userID}
+	if activeOnly { match["is_active"] = true }
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$lookup": bson.M{
+			"from": "events", "localField": "event_id", "foreignField": "_id", "as": "event",
+		}},
+		{"$unwind": "$event"},
+		{"$project": bson.M{
+			"_id": 1,
+			"event_id": 1,
+			"event_title": "$event.title",
+			"event_date":  "$event.event_date",
+			"advance_days": 1,
+			"reminder_times": 1,
+			"reminder_type": 1,
+			"custom_message": 1,
+			"is_active": 1,
+			"next_send": 1,
+			"last_sent": 1,
+			"created_at": 1,
+			"updated_at": 1,
+		}},
+		{"$sort": bson.M{"created_at": -1}},
+		{"$limit": limit},
+	}
+	cursor, err := s.reminderColl.Aggregate(ctx, pipeline)
+	if err != nil { return nil, fmt.Errorf("failed to aggregate simple reminders: %w", err) }
+	defer cursor.Close(ctx)
+	var out []SimpleReminderDTO
+	if err := cursor.All(ctx, &out); err != nil { return nil, fmt.Errorf("failed to decode simple reminders: %w", err) }
+	return out, nil
+}
+
+// SetReminderActive 设置提醒激活状态
+func (s *ReminderService) SetReminderActive(ctx context.Context, userID, reminderID primitive.ObjectID, active bool) error {
+	filter := bson.M{"_id": reminderID, "user_id": userID}
+	update := bson.M{"$set": bson.M{"is_active": active, "updated_at": time.Now()}}
+	res, err := s.reminderColl.UpdateOne(ctx, filter, update)
+	if err != nil { return fmt.Errorf("failed to update reminder active: %w", err) }
+	if res.MatchedCount == 0 { return fmt.Errorf("reminder not found") }
+	return nil
+}
+
+// ToggleReminderActive 反转提醒激活状态
+func (s *ReminderService) ToggleReminderActive(ctx context.Context, userID, reminderID primitive.ObjectID) (bool, error) {
+	var r models.Reminder
+	if err := s.reminderColl.FindOne(ctx, bson.M{"_id": reminderID, "user_id": userID}).Decode(&r); err != nil {
+		if err == mongo.ErrNoDocuments { return false, fmt.Errorf("reminder not found") }
+		return false, fmt.Errorf("failed to find reminder: %w", err)
+	}
+	newVal := !r.IsActive
+	if err := s.SetReminderActive(ctx, userID, reminderID, newVal); err != nil { return false, err }
+	return newVal, nil
+}
+
+// PreviewReminder 预览提醒计划
+func (s *ReminderService) PreviewReminder(ctx context.Context, userID, eventID primitive.ObjectID, advanceDays int, times []string) (*PreviewResult, error) {
+	res := &PreviewResult{EventID: eventID, AdvanceDays: advanceDays, ReminderTimes: times}
+	// 校验
+	var vErrs []string
+	if eventID.IsZero() { vErrs = append(vErrs, "event_id required") }
+	if advanceDays < 0 || advanceDays > 365 { vErrs = append(vErrs, "advance_days out of range 0-365") }
+	if len(times) == 0 { vErrs = append(vErrs, "at least one reminder time") }
+	// 规范化 times
+	norm := make([]string, 0, len(times))
+	for _, t := range times {
+		tt := strings.TrimSpace(t)
+		if tt == "" { continue }
+		if len(tt) != 5 || tt[2] != ':' {
+			vErrs = append(vErrs, fmt.Sprintf("invalid time format: %s", tt))
+			continue
+		}
+		norm = append(norm, tt)
+	}
+	sort.Strings(norm)
+	res.ReminderTimes = norm
+	// 获取事件
+	var event models.Event
+	if err := s.eventColl.FindOne(ctx, bson.M{"_id": eventID, "user_id": userID}).Decode(&event); err != nil {
+		if err == mongo.ErrNoDocuments {
+			vErrs = append(vErrs, "event not found")
+		} else {
+			return nil, fmt.Errorf("failed to load event: %w", err)
+		}
+	} else {
+		res.EventTitle = event.Title
+		res.EventDate = &event.EventDate
+		// 构造临时提醒计算 next_send
+		temp := models.Reminder{EventID: eventID, AdvanceDays: advanceDays, ReminderTimes: norm, ReminderType: "app", IsActive: true}
+		ns := temp.CalculateNextSendTime(event)
+		res.NextSend = ns
+		if ns == nil { vErrs = append(vErrs, "no upcoming send time (maybe event past or advance_days too large)") }
+	}
+	// 文本描述
+	var b strings.Builder
+	if res.EventTitle != "" { b.WriteString(res.EventTitle) } else { b.WriteString("(event)") }
+	if res.EventDate != nil { b.WriteString(" @ "); b.WriteString(res.EventDate.Format("2006-01-02 15:04")) }
+	b.WriteString(fmt.Sprintf(" | advance %d day(s) | times %v", advanceDays, norm))
+	if res.NextSend != nil { b.WriteString(" => next "); b.WriteString(res.NextSend.Format("2006-01-02 15:04")) }
+	res.ScheduleText = b.String()
+	if len(vErrs) > 0 { res.ValidationErrs = vErrs }
+	return res, nil
 }
 
 // GetUpcomingReminders 获取即将到来的提醒

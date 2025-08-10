@@ -69,8 +69,7 @@ const RemindersPage: React.FC = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string,string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [preview, setPreview] = useState<any|null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const [creatingTest, setCreatingTest] = useState(false);
 
   const validate = (draft: CreateReminderForm) => {
     const errs: Record<string,string> = {};
@@ -236,30 +235,11 @@ const RemindersPage: React.FC = () => {
       reminder_type: 'app',
       custom_message: ''
     });
-    setFormErrors({});
-    setPreview(null);
+  setFormErrors({});
   };
 
   // 预览防抖
-  const previewTimer = React.useRef<number | null>(null);
-  const schedulePreview = () => {
-    if (previewTimer.current) window.clearTimeout(previewTimer.current);
-    previewTimer.current = window.setTimeout(() => { runPreview(); }, 400);
-  };
-  const runPreview = async () => {
-    if (!formData.event_id || !formData.reminder_times.some(t=>t.trim())) { setPreview(null); return; }
-    try {
-      setPreviewLoading(true);
-      const resp = await api.post('/reminders/preview', {
-        event_id: formData.event_id,
-        advance_days: formData.advance_days,
-        reminder_times: formData.reminder_times.filter(t=>t.trim())
-      });
-      setPreview(resp.data);
-    } catch {
-      setPreview(null);
-    } finally { setPreviewLoading(false); }
-  };
+  const schedulePreview = () => {};
 
   // 处理表单输入变化
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -286,6 +266,36 @@ const RemindersPage: React.FC = () => {
   };
   const addTimeField = () => setFormData(prev => ({ ...prev, reminder_times: [...prev.reminder_times, ''] }));
   const removeTimeField = (idx: number) => setFormData(prev => ({ ...prev, reminder_times: prev.reminder_times.filter((_,i)=>i!==idx) }));
+
+  // 快捷时间集合与解析
+  const quickSets: Record<string,string[]> = {
+    morning: ['09:00'],
+    work: ['09:00','13:00','18:00'],
+    evening: ['20:00'],
+    hourly: Array.from({length:5},(_,i)=> `${(9+i).toString().padStart(2,'0')}:00`)
+  };
+  const applyQuick = (k: string) => { const arr = quickSets[k]; if (!arr) return; setFormData(p=>({...p, reminder_times: arr })); setFormErrors(validate({...formData, reminder_times: arr })); };
+  const parseFreeTimes = (raw: string) => {
+    const parts = raw.split(/[\s,;，；]+/).map(s=>s.trim()).filter(Boolean);
+    const out: string[] = [];
+    for (let p of parts) {
+      if (/^\d{3}$/.test(p)) p = '0'+p;
+      if (/^\d{4}$/.test(p)) p = p.slice(0,2)+':'+p.slice(2);
+      if (/^\d{2}:\d{2}$/.test(p)) out.push(p);
+    }
+    if (out.length) { setFormData(prev=>({...prev, reminder_times: out })); setFormErrors(validate({...formData, reminder_times: out })); }
+  };
+
+  const createTestReminder = async () => {
+    if (!formData.event_id) { setFormErrors(f=>({...f, event_id: t('reminders.validation.eventRequired','Event required')})); return; }
+    setCreatingTest(true);
+    try {
+      await api.post('/reminders/test', { event_id: formData.event_id, message: formData.custom_message || '测试提醒', delay_seconds: 5 });
+      await fetchReminders();
+    } catch (e:any) {
+      setError(e.response?.data?.message || 'Failed to create test reminder');
+    } finally { setCreatingTest(false); }
+  };
 
   // 格式化日期显示
   const formatDateTime = (dateTimeString: string) => {
@@ -489,21 +499,18 @@ const RemindersPage: React.FC = () => {
                         )}
                       </div>
                     ))}
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addTimeField}>{t('reminders.addTime','Add Time')}</button>
-                    {formErrors.reminder_times && <div className="text-danger small mt-1">{formErrors.reminder_times}</div>}
-                    {preview && (
-                      <div className="alert alert-info mt-3 py-2 px-3 small mb-0">
-                        <div className="fw-bold mb-1"><i className="bi bi-eye me-1"/> {t('reminders.preview','Preview')}</div>
-                        <div>{preview.schedule_text}</div>
-                        {preview.next_send && (<div className="mt-1">{t('reminders.nextSend','Next send')}: {formatDateTime(preview.next_send)}</div>)}
-                        {Array.isArray(preview.validation_errors) && preview.validation_errors.length>0 && (
-                          <ul className="mt-1 mb-0 text-danger">
-                            {preview.validation_errors.map((er:string,i:number)=>(<li key={i}>{er}</li>))}
-                          </ul>
-                        )}
-                        {previewLoading && <div className="text-muted mt-1"><span className="spinner-border spinner-border-sm"/> {t('common.loading','Loading')}...</div>}
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addTimeField}>{t('reminders.addTime','Add')}</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={()=>applyQuick('morning')}>09:00</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={()=>applyQuick('work')}>{t('reminders.quick.work','Work')}</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={()=>applyQuick('evening')}>20:00</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={()=>applyQuick('hourly')}>{t('reminders.quick.hourly','Hourly')}</button>
+                      <div className="input-group input-group-sm" style={{maxWidth:220}}>
+                        <input type="text" className="form-control" placeholder="0900,1400 1830" onBlur={e=>parseFreeTimes(e.target.value)} />
+                        <span className="input-group-text">NL</span>
                       </div>
-                    )}
+                    </div>
+                    {formErrors.reminder_times && <div className="text-danger small mt-1">{formErrors.reminder_times}</div>}
                   </div>
                   <div className="mb-3">
                     <label htmlFor="reminder_type" className="form-label">{t('reminders.reminderType', 'Reminder Type')} *</label>
@@ -529,19 +536,11 @@ const RemindersPage: React.FC = () => {
                   >
                     {t('common.cancel')}
                   </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={submitting || !isFormValid}
-                  >
-                    {submitting ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        {t('reminders.creating', 'Creating...')}
-                      </>
-                    ) : (
-                      t('reminders.create')
-                    )}
+                  <button type="button" className="btn btn-outline-warning" onClick={createTestReminder} disabled={creatingTest || !formData.event_id} title={t('reminders.testReminder','Create test reminder (5s)')}>
+                    {creatingTest ? <span className="spinner-border spinner-border-sm"/> : <i className="bi bi-lightning"/>}
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting || !isFormValid}>
+                    {submitting ? (<><span className="spinner-border spinner-border-sm me-2"/> {t('reminders.creating','Creating...')}</>) : t('reminders.create')}
                   </button>
                 </div>
               </form>
