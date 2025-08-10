@@ -24,6 +24,7 @@ interface EventItem {
   recurrence_type: string; // none / yearly / monthly / weekly / daily
   created_at?: string;
   updated_at?: string;
+  is_active?: boolean;
 }
 
 // 创建事件表单
@@ -68,6 +69,8 @@ const EventsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [timelineEventId, setTimelineEventId] = useState<string | null>(null);
   const [timelineEventTitle, setTimelineEventTitle] = useState<string>('');
+  // 视图模式: card / list / compact / timeline
+  const [viewMode, setViewMode] = useState<'card'|'list'|'compact'|'timeline'>('card');
 
   // 使用通用 focus 高亮钩子
   useFocusHighlight({ attrName: 'data-event-id' });
@@ -91,6 +94,7 @@ const EventsPage: React.FC = () => {
   const [formData, setFormData] = useState<CreateEventForm>(initialForm);
   const [formErrors, setFormErrors] = useState<Record<string,string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [advancingId, setAdvancingId] = useState<string|null>(null);
 
   const validate = (draft: CreateEventForm) => {
     const errs: Record<string,string> = {};
@@ -125,6 +129,7 @@ const EventsPage: React.FC = () => {
         location: e.location,
         is_all_day: e.is_all_day,
         recurrence_type: e.recurrence_type,
+  is_active: e.is_active,
         created_at: e.created_at,
         updated_at: e.updated_at,
       }));
@@ -135,6 +140,17 @@ const EventsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAdvance = async (id: string) => {
+    setAdvancingId(id);
+    try {
+      const res = await api.post(`/events/${id}/advance`);
+      // 更新本地列表
+      setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, event_date: res.data.event_date, is_active: res.data.is_active } : ev));
+    } catch (err: any) {
+      setError(err.response?.data || err.message || 'Advance failed');
+    } finally { setAdvancingId(null); }
   };
 
   // 预热 unified 缓存（不再单独展示）
@@ -298,7 +314,13 @@ const EventsPage: React.FC = () => {
             <i className="bi bi-calendar-event me-2"></i>
             {t('events.title') || t('events.all') || 'Events'}
           </h1>
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 align-items-center flex-wrap">
+            <div className="btn-group" role="group" aria-label="view modes">
+              <button type="button" className={`btn btn-sm btn-outline-primary ${viewMode==='card'?'active':''}`} onClick={()=> setViewMode('card')}>{t('events.viewCard','卡片')}</button>
+              <button type="button" className={`btn btn-sm btn-outline-primary ${viewMode==='list'?'active':''}`} onClick={()=> setViewMode('list')}>{t('events.viewList','列表')}</button>
+              <button type="button" className={`btn btn-sm btn-outline-primary ${viewMode==='compact'?'active':''}`} onClick={()=> setViewMode('compact')}>{t('events.viewCompact','紧凑')}</button>
+              <button type="button" className={`btn btn-sm btn-outline-primary ${viewMode==='timeline'?'active':''}`} onClick={()=> setViewMode('timeline')}>{t('events.viewTimeline','时间线')}</button>
+            </div>
             <div className="input-group">
               <input
                 type="text"
@@ -334,53 +356,163 @@ const EventsPage: React.FC = () => {
         emptyHint={<div className="text-center py-5 text-muted">{t('events.noEvents')}</div>}
         skeleton={<div className="row">{Array.from({length:6}).map((_,i)=>(<div key={i} className="col-lg-6 mb-3"><div className="border rounded p-4 placeholder-wave" style={{height:160}}><span className="placeholder col-8 mb-3 d-block"></span><span className="placeholder col-6 mb-2 d-block"></span><span className="placeholder col-4 d-block"></span></div></div>))}</div>}
       >
-        {(list) => (
-          <div className="row">
-      {list.map((event) => (
-              <div key={event.id} data-event-id={event.id} className="col-lg-6 mb-3">
-        <div className="card border h-100 event-card" role="button" onClick={(e)=> { if(!(e.target as HTMLElement).closest('.dropdown')) navigate(`/events/${event.id}`); }}>
-                  <div className="card-body d-flex flex-column">
-                    <h6 className="card-title d-flex justify-content-between align-items-start">
-                      <span className="me-2 flex-grow-1 text-truncate" title={event.title}>{event.title}</span>
-                      <div className="d-flex align-items-center gap-2">
+        {(list) => {
+          if (viewMode === 'list') {
+            return (
+              <div className="table-responsive">
+                <table className="table align-middle event-table">
+                  <thead>
+                    <tr>
+                      <th style={{width:'30%'}}>{t('common.title','Title')}</th>
+                      <th>{t('events.eventType')}</th>
+                      <th>{t('events.eventDate')}</th>
+                      <th>{t('events.importance')}</th>
+                      <th>{t('common.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map(event => (
+                      <tr key={event.id} data-event-id={event.id} className="cursor-pointer" onClick={(e)=> { if(!(e.target as HTMLElement).closest('.btn,button')) navigate(`/events/${event.id}`); }}>
+                        <td>
+                          <div className="d-flex flex-column">
+                            <span className="fw-semibold text-truncate" title={event.title}>{event.title}</span>
+                            <div className="small text-muted">{event.description?.slice(0,80)}</div>
+                          </div>
+                        </td>
+                        <td><span className="badge bg-light text-dark border">{t(`events.${event.event_type}`) || event.event_type}</span></td>
+                        <td>
+                          <div className="d-flex flex-column small">
+                            <span>{formatDateTime(event.event_date)}</span>
+                            <EventCountdown target={event.event_date} />
+                          </div>
+                        </td>
+                        <td><SeverityBadge source="event" scheduledAt={event.event_date} importance={event.importance_level} showLabel={false} /></td>
+                        <td>
+                          <div className="btn-group btn-group-sm">
+                            <button type="button" className="btn btn-outline-secondary" onClick={()=> navigate(`/events/${event.id}`)} aria-label="open"><i className="bi bi-box-arrow-up-right" /></button>
+                            {event.recurrence_type!=='none' && <button type="button" className="btn btn-outline-primary" disabled={advancingId===event.id} onClick={()=> handleAdvance(event.id)} aria-label={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
+                            <button type="button" className="btn btn-outline-danger" onClick={()=> handleDeleteEvent(event.id)} aria-label="delete"><i className="bi bi-trash" /></button>
+                            <button type="button" className="btn btn-outline-info" onClick={()=> { setTimelineEventId(event.id); setTimelineEventTitle(event.title); }} aria-label="timeline"><i className="bi bi-clock-history" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }
+          if (viewMode === 'timeline') {
+            const sorted = [...list].sort((a,b)=> new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+            return (
+              <div className="event-timeline-view">
+                <ul className="timeline list-unstyled">
+                  {sorted.map((e: EventItem) => {
+                    const diff = new Date(e.event_date).getTime() - Date.now();
+                    const past = diff < 0; const abs = Math.abs(diff); const d = Math.floor(abs/86400000); const h = Math.floor(abs%86400000/3600000); const m = Math.floor(abs%3600000/60000);
+                    const label = d>0? `${d}d ${h}h` : h>0? `${h}h ${m}m` : `${m}m`;
+                    return (
+                      <li key={e.id} data-event-id={e.id} className={`timeline-item ${past?'past':''}`}>
+                        <div className="timeline-dot" />
+                        <div className="timeline-content" onClick={(ev)=> { if(!(ev.target as HTMLElement).closest('.btn')) navigate(`/events/${e.id}`); }}>
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <span className="fw-semibold text-truncate" style={{maxWidth:'20rem'}} title={e.title}>{e.title}</span>
+                            <SeverityBadge source="event" scheduledAt={e.event_date} importance={e.importance_level} showLabel={false} />
+                            <span className={`badge ${past? 'bg-danger':'bg-primary'} small`}>{past? t('events.started','已开始'): t('events.countdown','倒计时')} {label}</span>
+                            <span className="badge bg-light text-dark border small">{t(`events.${e.event_type}`) || e.event_type}</span>
+                          </div>
+                          {e.description && <div className="small text-muted mt-1 line-clamp-2">{e.description}</div>}
+                          <div className="small mt-1"><i className="bi bi-calendar me-1" />{formatDateTime(e.event_date)}</div>
+                          <div className="mt-2 d-flex gap-2 flex-wrap">
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=> navigate(`/events/${e.id}`)}>{t('common.view','查看')}</button>
+                            <button type="button" className="btn btn-sm btn-outline-info" onClick={()=> { setTimelineEventId(e.id); setTimelineEventTitle(e.title); }}>{t('events.timeline','时间线')}</button>
+                            <button type="button" className="btn btn-sm btn-outline-success" onClick={async()=> { try { await api.post(`/events/${e.id}/advance`); await fetchEvents(); } catch(err){ console.warn('advance failed', err);} }}>{t('events.advanceNext','推进')}</button>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          }
+          if (viewMode === 'compact') {
+            return (
+              <ul className="list-group event-compact-list">
+                {list.map(event => (
+                  <li key={event.id} data-event-id={event.id} className="list-group-item d-flex gap-3 align-items-start flex-wrap" role="button" onClick={(e)=> { if(!(e.target as HTMLElement).closest('.btn,button')) navigate(`/events/${event.id}`); }}>
+                    <div className="d-flex flex-column flex-grow-1 min-w-0">
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <span className="fw-semibold text-truncate" style={{maxWidth:'18rem'}} title={event.title}>{event.title}</span>
                         <SeverityBadge source="event" scheduledAt={event.event_date} importance={event.importance_level} showLabel={false} />
-                        <div className="dropdown">
-                          <button className="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i className="bi bi-three-dots"></i>
-                          </button>
-                          <ul className="dropdown-menu">
-                            <li>
-                              <button className="dropdown-item" onClick={() => handleDeleteEvent(event.id)}>
-                                <i className="bi bi-trash me-2"></i>{t('common.delete')}
-                              </button>
-                            </li>
-                            <li>
-                              <button className="dropdown-item" onClick={() => { setTimelineEventId(event.id); setTimelineEventTitle(event.title); }}>
-                                <i className="bi bi-clock-history me-2"></i>时间线 / 评论
-                              </button>
-                            </li>
-                          </ul>
+                        <span className="badge rounded-pill bg-light text-dark border small">{t(`events.${event.event_type}`) || event.event_type}</span>
+                      </div>
+                      <div className="small text-muted d-flex flex-wrap gap-3">
+                        <span><i className="bi bi-calendar me-1" />{formatDateTime(event.event_date)}</span>
+                        <EventCountdown target={event.event_date} />
+                        {event.location && <span><i className="bi bi-geo-alt me-1" />{event.location}</span>}
+                        {event.recurrence_type !== 'none' && <span><i className="bi bi-arrow-repeat me-1" />{t('events.repeats', { pattern: t(`events.${event.recurrence_type}`) || event.recurrence_type, interval: '' }).replace(' (every )','')}</span>}
+                      </div>
+                    </div>
+                    <div className="btn-group btn-group-sm ms-auto">
+                      <button type="button" className="btn btn-outline-secondary" onClick={()=> navigate(`/events/${event.id}`)} aria-label="open"><i className="bi bi-box-arrow-up-right" /></button>
+                      {event.recurrence_type!=='none' && <button type="button" className="btn btn-outline-primary" disabled={advancingId===event.id} onClick={()=> handleAdvance(event.id)} aria-label={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
+                      <button type="button" className="btn btn-outline-info" onClick={()=> { setTimelineEventId(event.id); setTimelineEventTitle(event.title); }} aria-label="timeline"><i className="bi bi-clock-history" /></button>
+                      <button type="button" className="btn btn-outline-danger" onClick={()=> handleDeleteEvent(event.id)} aria-label="delete"><i className="bi bi-trash" /></button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+          // 默认卡片模式
+          return (
+            <div className="row">
+              {list.map((event) => (
+                <div key={event.id} data-event-id={event.id} className="col-xl-4 col-lg-6 mb-3">
+                  <div className="card h-100 event-card" role="button" data-importance={event.importance_level} onClick={(e)=> { if(!(e.target as HTMLElement).closest('.dropdown,.btn-group,button')) navigate(`/events/${event.id}`); }}>
+                    <div className="event-accent" />
+                    <div className="card-body d-flex flex-column">
+                      <h6 className="card-title d-flex justify-content-between align-items-start gap-2">
+                        <span className="me-2 flex-grow-1 text-truncate" title={event.title}>{event.title}</span>
+                        <div className="d-flex align-items-center gap-2">
+                          <SeverityBadge source="event" scheduledAt={event.event_date} importance={event.importance_level} showLabel={false} />
+                          <div className="btn-group">
+                            <button className="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-label="menu"><i className="bi bi-three-dots"></i></button>
+                            <ul className="dropdown-menu">
+                              <li>
+                                <button className="dropdown-item" onClick={() => handleDeleteEvent(event.id)}>
+                                  <i className="bi bi-trash me-2"></i>{t('common.delete')}
+                                </button>
+                              </li>
+                              <li>
+                                <button className="dropdown-item" onClick={() => { setTimelineEventId(event.id); setTimelineEventTitle(event.title); }}>
+                                  <i className="bi bi-clock-history me-2"></i>时间线 / 评论
+                                </button>
+                              </li>
+                            </ul>
+                            {event.recurrence_type!=='none' && <button className="btn btn-sm btn-outline-primary" disabled={advancingId===event.id} onClick={()=> handleAdvance(event.id)} title={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
+                          </div>
+                        </div>
+                      </h6>
+                      {event.description && <p className="card-text small mb-2 line-clamp-2">{event.description}</p>}
+                      <div className="mt-auto small text-muted d-flex flex-column gap-1">
+                        <div><i className="bi bi-calendar me-1"></i>{formatDateTime(event.event_date)}</div>
+                        <EventCountdown target={event.event_date} />
+                        <div className="d-flex flex-wrap gap-2">
+                          {event.location && <span><i className="bi bi-geo-alt me-1"></i>{event.location}</span>}
+                          {event.recurrence_type !== 'none' && (
+                            <span><i className="bi bi-arrow-repeat me-1"></i>{t('events.repeats', { pattern: t(`events.${event.recurrence_type}`) || event.recurrence_type, interval: '' }).replace(' (every )','')}</span>
+                          )}
                         </div>
                       </div>
-                    </h6>
-                    {event.description && <p className="card-text small mb-2">{event.description}</p>}
-                    <div className="small text-muted mt-auto">
-                      <div><i className="bi bi-calendar me-1"></i>{formatDateTime(event.event_date)}</div>
-                      {/* 倒计时显示 */}
-                      <EventCountdown target={event.event_date} />
-                      {event.location && (
-                        <div><i className="bi bi-geo-alt me-1"></i>{event.location}</div>
-                      )}
-                      {event.recurrence_type !== 'none' && (
-                        <div><i className="bi bi-arrow-repeat me-1"></i>{t('events.repeats', { pattern: t(`events.${event.recurrence_type}`) || event.recurrence_type, interval: '' }).replace(' (every )','')}</div>
-                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        }}
       </DataState>
   {/* 创建按钮已移动到顶部 */}
 

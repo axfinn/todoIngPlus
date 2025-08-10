@@ -183,6 +183,67 @@ func (s *EventService) DeleteEvent(ctx context.Context, userID, eventID primitiv
 	return nil
 }
 
+// AdvanceEvent 推进事件到下一周期（若为非重复则标记为不活跃）
+func (s *EventService) AdvanceEvent(ctx context.Context, userID, eventID primitive.ObjectID) (*models.Event, error) {
+	// 获取当前事件
+	event, err := s.GetEvent(ctx, userID, eventID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	update := bson.M{"updated_at": now}
+	var oldDate = event.EventDate
+
+	if event.RecurrenceType == "none" { // 一次性事件：标记完成
+		update["is_active"] = false
+		// 可选：记录 last_triggered_at
+		update["last_triggered_at"] = now
+	} else {
+		// 计算下一次发生时间（基于当前或当前之后的现在）
+		next := event.GetNextOccurrence(now)
+		if next == nil { // 无后续, 标记 inactive
+			update["is_active"] = false
+		} else {
+			update["event_date"] = *next
+			update["last_triggered_at"] = now
+		}
+	}
+
+	_, err = s.eventColl.UpdateOne(ctx, bson.M{"_id": event.ID, "user_id": userID}, bson.M{"$set": update})
+	if err != nil {
+		return nil, fmt.Errorf("failed to advance event: %w", err)
+	}
+	updated, err := s.GetEvent(ctx, userID, eventID)
+	if err != nil { return nil, err }
+
+	// 写入系统时间线条目（不阻断主流程）
+	go func(oldT time.Time, newEv *models.Event) {
+		defer func(){ recover() }()
+		// 仅在变化或被标记为 inactive 时记录
+		content := "advanced"
+		meta := map[string]string{
+			"old": oldT.Format(time.RFC3339),
+			"recurrence": newEv.RecurrenceType,
+			"active": fmt.Sprintf("%v", newEv.IsActive),
+		}
+		if newEv.EventDate.After(oldT) { meta["new"] = newEv.EventDate.Format(time.RFC3339) }
+		// 直接插入 event_comments 集合
+		_, _ = s.db.Collection("event_comments").InsertOne(context.Background(), bson.M{
+			"_id": primitive.NewObjectID(),
+			"event_id": newEv.ID,
+			"user_id": newEv.UserID,
+			"type": "system",
+			"content": content,
+			"meta": meta,
+			"created_at": time.Now(),
+			"updated_at": time.Now(),
+		})
+	}(oldDate, updated)
+
+	return updated, nil
+}
+
 // ListEvents 获取事件列表
 func (s *EventService) ListEvents(ctx context.Context, userID primitive.ObjectID, page, pageSize int, eventType string, startDate, endDate *time.Time) (*models.EventListResponse, error) {
 	if page < 1 {

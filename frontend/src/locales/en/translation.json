@@ -225,7 +225,14 @@
   "reminderCreateFailed": "Reminder creation failed",
   "viewCard": "Card",
   "viewList": "List",
-  "viewCompact": "Compact"
+  "viewCompact": "Compact",
+  "viewTimeline": "Timeline",
+    "advanceNext": "Advance Action",
+  "timeline": "Timeline",
+  "countdown": "Countdown",
+  "started": "Started",
+  "advanceSuccess": "Advanced",
+  "advanceFailed": "Advance failed"
   },
   "reminders": {
     "title": "Reminders",

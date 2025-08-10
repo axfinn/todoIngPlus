@@ -365,7 +365,14 @@
   "reminderCreateFailed": "创建提醒失败",
   "viewCard": "卡片",
   "viewList": "列表",
-  "viewCompact": "紧凑"
+  "viewCompact": "紧凑",
+  "viewTimeline": "时间线",
+    "advanceNext": "推进操作",
+  "timeline": "时间线",
+  "countdown": "倒计时",
+  "started": "已开始",
+  "advanceSuccess": "已推进",
+  "advanceFailed": "推进失败"
   },
   "reminders": {
     "title": "提醒",

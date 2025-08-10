@@ -149,17 +149,13 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
                 <button className="btn-close" onClick={() => setError(null)}></button>
               </div>
             )}
-            <div className="border rounded flex-grow-1 mb-3 position-relative" ref={listRef} style={{ overflowY: 'auto', maxHeight: '55vh', background: 'var(--bs-body-bg)' }}>
-              {loading && (
-                <div className="d-flex justify-content-center py-5 text-muted small">加载中...</div>
-              )}
-              {!loading && grouped.length === 0 && (
-                <div className="d-flex justify-content-center py-5 text-muted small">暂无记录</div>
-              )}
+            <div className="border rounded flex-grow-1 mb-3 position-relative timeline-wrapper" ref={listRef} style={{ overflowY: 'auto', maxHeight: '55vh', background: 'var(--bs-body-bg)' }}>
+              {loading && <div className="d-flex justify-content-center py-5 text-muted small">加载中...</div>}
+              {!loading && grouped.length === 0 && <div className="d-flex justify-content-center py-5 text-muted small">暂无记录</div>}
               {!loading && grouped.length > 0 && (
                 <ul className="timeline list-unstyled m-0 p-3">
                   {hasMore && (
-                    <li className="text-center mb-2">
+                    <li className="text-center mb-3">
                       <button className="btn btn-outline-secondary btn-sm" disabled={loadingMore} onClick={() => fetchTimeline({ more: true })}>
                         {loadingMore ? '加载...' : '加载更早'}
                       </button>
@@ -169,12 +165,22 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
                     const isSystem = item.type !== 'comment';
                     const icon = item.meta?.kind==='event_start'? 'bi-flag-fill': item.meta?.reminder_id? 'bi-bell-fill': isSystem? 'bi-gear-fill': 'bi-chat-dots';
                     return (
-                      <li key={item.id} className="d-flex position-relative ps-4 pb-3 timeline-item">
-                        <span className={"position-absolute top-0 start-0 translate-middle-y badge rounded-pill " + (isSystem ? 'bg-secondary' : 'bg-primary')} style={{ left: 0, top: '0.9rem' }}>&nbsp;</span>
+                      <li key={item.id} className="d-flex position-relative ps-5 pb-4 timeline-item">
+                        <div className="timeline-dot d-flex align-items-center justify-content-center">
+                          <i className={`bi ${icon}`}></i>
+                        </div>
                         <div className="flex-grow-1">
-                          <div className="d-flex justify-content-between align-items-start gap-2">
-                            <div className="small fw-semibold text-truncate d-flex align-items-center gap-1" style={{maxWidth:'60%'}}><i className={`bi ${icon}`}></i>{systemLabel(item)}</div>
-                            <div className="text-muted small" title={new Date(item.created_at).toLocaleString()}>{humanTime(item.created_at)}</div>
+                          <div className="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div className="small fw-semibold d-flex align-items-center gap-2">
+                              <span className={"badge rounded-pill " + (isSystem ? 'bg-secondary' : 'bg-primary')}>{systemLabel(item)}</span>
+                              <span className="text-muted small" title={new Date(item.created_at).toLocaleString()}>{humanTime(item.created_at)}</span>
+                            </div>
+                            {!isSystem && editingId!==item.id && (
+                              <div className="btn-group btn-group-sm">
+                                <button className="btn btn-outline-secondary" onClick={()=> startEdit(item)}>{t('common.edit')||'编辑'}</button>
+                                <button className="btn btn-outline-danger" onClick={()=> handleDelete(item.id)}>{t('common.delete')||'删除'}</button>
+                              </div>
+                            )}
                           </div>
                           {editingId===item.id ? (
                             <div className="mt-2">
@@ -185,14 +191,11 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
                               </div>
                             </div>
                           ) : (
-                            <div className={"mt-1 small " + (isSystem ? 'text-muted fst-italic' : '')} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            <div className={"mt-2 small " + (isSystem ? 'text-muted fst-italic' : '')} style={{whiteSpace:'pre-wrap'}}>
                               {item.content || (isSystem ? '(无内容)' : '')}
-                            </div>
-                          )}
-                          {!isSystem && editingId!==item.id && (
-                            <div className="mt-1 d-flex gap-3">
-                              <button className="btn btn-link btn-sm p-0" onClick={()=> startEdit(item)}>{t('common.edit')||'编辑'}</button>
-                              <button className="btn btn-link btn-sm p-0 text-danger" onClick={() => handleDelete(item.id)}>{t('common.delete')||'删除'}</button>
+                              {item.meta && (item.meta.old || item.meta.new) && (
+                                <div className="mt-1 text-muted small">{item.meta.old} {item.meta.new && '→ ' + item.meta.new}</div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -222,9 +225,12 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
       </div>
       <style>{`
         .timeline { position: relative; }
-        .timeline:before { content:''; position:absolute; left:10px; top:0; bottom:0; width:2px; background: var(--bs-border-color); }
-        .timeline-item:last-child { padding-bottom:0; }
-        .timeline-item:hover { background: rgba(0,0,0,0.015); border-radius:4px; }
+        .timeline:before { content:''; position:absolute; left:18px; top:0; bottom:0; width:2px; background: var(--bs-border-color); }
+        .timeline-item { transition: background .25s, box-shadow .25s; }
+        .timeline-item:hover { background: rgba(0,0,0,0.03); border-radius:6px; }
+        .timeline-dot { position:absolute; left:10px; top:.4rem; width:16px; height:16px; background:var(--bs-body-bg); border:2px solid var(--bs-primary); border-radius:50%; font-size:.65rem; }
+        .timeline-item .badge { font-weight:500; }
+        @media (prefers-color-scheme: dark){ .timeline-item:hover { background: rgba(255,255,255,0.04);} .timeline-dot { background:#1e1e1e; } }
       `}</style>
     </div>
   );
