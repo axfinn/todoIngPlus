@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/axfinn/todoIng/backend-go/internal/observability"
 
@@ -242,6 +243,52 @@ func (d *ReminderDeps) ListReminders(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// ListRemindersSimple 简化列表（无分页，快速） /api/reminders/simple?active_only=true
+func (d *ReminderDeps) ListRemindersSimple(w http.ResponseWriter, r *http.Request) {
+	userID := GetUserID(r); if userID == "" { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
+	objectID, err := primitive.ObjectIDFromHex(userID); if err != nil { http.Error(w, "Invalid user ID", http.StatusBadRequest); return }
+	activeOnly := r.URL.Query().Get("active_only") == "true"
+	limit := 50
+	if ls := r.URL.Query().Get("limit"); ls != "" { if v, err := strconv.Atoi(ls); err == nil && v > 0 && v <= 100 { limit = v } }
+	svc := services.NewReminderService(d.DB)
+	list, err := svc.ListSimpleReminders(r.Context(), objectID, activeOnly, limit)
+	if err != nil { http.Error(w, fmt.Sprintf("Failed to list simple reminders: %v", err), http.StatusInternalServerError); return }
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{ "reminders": list, "count": len(list) })
+}
+
+// ToggleReminderActive 反转激活状态
+func (d *ReminderDeps) ToggleReminderActive(w http.ResponseWriter, r *http.Request) {
+	userID := GetUserID(r); if userID == "" { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
+	objectID, err := primitive.ObjectIDFromHex(userID); if err != nil { http.Error(w, "Invalid user ID", http.StatusBadRequest); return }
+	ridStr := mux.Vars(r)["id"]
+	rid, err := primitive.ObjectIDFromHex(ridStr); if err != nil { http.Error(w, "Invalid reminder ID", http.StatusBadRequest); return }
+	svc := services.NewReminderService(d.DB)
+	newVal, err := svc.ToggleReminderActive(r.Context(), objectID, rid)
+	if err != nil { if err.Error() == "reminder not found" { http.Error(w, "Reminder not found", http.StatusNotFound); return }; http.Error(w, fmt.Sprintf("Failed to toggle: %v", err), http.StatusInternalServerError); return }
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{ "id": rid.Hex(), "is_active": newVal })
+}
+
+// PreviewReminder 预览提醒计划（不落库） POST /api/reminders/preview
+// { "event_id": "...", "advance_days": 0, "reminder_times": ["09:00"] }
+func (d *ReminderDeps) PreviewReminder(w http.ResponseWriter, r *http.Request) {
+	userID := GetUserID(r); if userID == "" { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
+	uid, err := primitive.ObjectIDFromHex(userID); if err != nil { http.Error(w, "Invalid user ID", http.StatusBadRequest); return }
+	var body struct {
+		EventID string   `json:"event_id"`
+		AdvanceDays int  `json:"advance_days"`
+		ReminderTimes []string `json:"reminder_times"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil { http.Error(w, "Invalid body", http.StatusBadRequest); return }
+	eid, err := primitive.ObjectIDFromHex(body.EventID); if err != nil { http.Error(w, "Invalid event_id", http.StatusBadRequest); return }
+	svc := services.NewReminderService(d.DB)
+	preview, err := svc.PreviewReminder(r.Context(), uid, eid, body.AdvanceDays, body.ReminderTimes)
+	if err != nil { http.Error(w, fmt.Sprintf("Failed to preview: %v", err), http.StatusInternalServerError); return }
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(preview)
+}
+
 // GetUpcomingReminders 获取即将到来的提醒
 func (d *ReminderDeps) GetUpcomingReminders(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserID(r)
@@ -314,14 +361,68 @@ func (d *ReminderDeps) SnoozeReminder(w http.ResponseWriter, r *http.Request) {
 func SetupReminderRoutes(r *mux.Router, deps *ReminderDeps) {
 	s := r.PathPrefix("/api/reminders").Subrouter()
 	
-	// 提醒管理路由
+	// 先注册所有静态/特定前缀路由，避免被通配 {id} 吃掉
+	s.Handle("/simple", Auth(http.HandlerFunc(deps.ListRemindersSimple))).Methods(http.MethodGet)
+	s.Handle("/test", Auth(http.HandlerFunc(deps.TestReminder))).Methods(http.MethodPost)
+	s.Handle("/upcoming", Auth(http.HandlerFunc(deps.GetUpcomingReminders))).Methods(http.MethodGet)
+
+	// 根路径列表 / 创建
 	s.Handle("", Auth(http.HandlerFunc(deps.ListReminders))).Methods(http.MethodGet)
 	s.Handle("", Auth(http.HandlerFunc(deps.CreateReminder))).Methods(http.MethodPost)
-	s.Handle("/{id}", Auth(http.HandlerFunc(deps.GetReminder))).Methods(http.MethodGet)
-	s.Handle("/{id}", Auth(http.HandlerFunc(deps.UpdateReminder))).Methods(http.MethodPut)
-	s.Handle("/{id}", Auth(http.HandlerFunc(deps.DeleteReminder))).Methods(http.MethodDelete)
-	
-	// 特殊路由
-	s.Handle("/upcoming", Auth(http.HandlerFunc(deps.GetUpcomingReminders))).Methods(http.MethodGet)
-	s.Handle("/{id}/snooze", Auth(http.HandlerFunc(deps.SnoozeReminder))).Methods(http.MethodPost)
+	s.Handle("/preview", Auth(http.HandlerFunc(deps.PreviewReminder))).Methods(http.MethodPost)
+
+	// 使用 24 位十六进制正则确保只匹配合法 ObjectID
+	idPattern := "{id:[0-9a-fA-F]{24}}"
+	s.Handle("/"+idPattern, Auth(http.HandlerFunc(deps.GetReminder))).Methods(http.MethodGet)
+	s.Handle("/"+idPattern, Auth(http.HandlerFunc(deps.UpdateReminder))).Methods(http.MethodPut)
+	s.Handle("/"+idPattern, Auth(http.HandlerFunc(deps.DeleteReminder))).Methods(http.MethodDelete)
+	s.Handle("/"+idPattern+"/snooze", Auth(http.HandlerFunc(deps.SnoozeReminder))).Methods(http.MethodPost)
+	s.Handle("/"+idPattern+"/toggle_active", Auth(http.HandlerFunc(deps.ToggleReminderActive))).Methods(http.MethodPost)
+}
+
+// TestReminder 计算一个临时提醒的 next_send 不落库
+func (d *ReminderDeps) TestReminder(w http.ResponseWriter, r *http.Request) {
+	userID := GetUserID(r); if userID == "" { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
+	uid, err := primitive.ObjectIDFromHex(userID); if err != nil { http.Error(w, "Invalid user ID", http.StatusBadRequest); return }
+	var body struct {
+		EventID       string   `json:"event_id"`
+		AdvanceDays   int      `json:"advance_days"`
+		ReminderTimes []string `json:"reminder_times"`
+		ReminderType  string   `json:"reminder_type"`
+		CustomMessage string   `json:"custom_message"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil { http.Error(w, "Invalid JSON", http.StatusBadRequest); return }
+	if body.EventID == "" { http.Error(w, "event_id required", http.StatusBadRequest); return }
+	eid, err := primitive.ObjectIDFromHex(body.EventID); if err != nil { http.Error(w, "Invalid event_id", http.StatusBadRequest); return }
+	if len(body.ReminderTimes) == 0 { http.Error(w, "reminder_times required", http.StatusBadRequest); return }
+	if body.ReminderType == "" { body.ReminderType = "app" }
+	svc := services.NewReminderService(d.DB)
+	// 取事件
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second); defer cancel()
+	var event models.Event
+	if err := d.DB.Collection("events").FindOne(ctx, primitive.M{"_id": eid, "user_id": uid}).Decode(&event); err != nil {
+		http.Error(w, "event not found", http.StatusBadRequest); return
+	}
+	tmp := &models.Reminder{
+		ID:            primitive.NewObjectID(),
+		EventID:       eid,
+		UserID:        uid,
+		AdvanceDays:   body.AdvanceDays,
+		ReminderTimes: body.ReminderTimes,
+		ReminderType:  body.ReminderType,
+		CustomMessage: body.CustomMessage,
+		IsActive:      true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	next := tmp.CalculateNextSendTime(event)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"next_send":  next,
+		"event_date": event.EventDate,
+		"now":        time.Now(),
+		"advance_days": tmp.AdvanceDays,
+		"reminder_times": tmp.ReminderTimes,
+	})
+	_ = svc // 保留以防后续拓展
 }

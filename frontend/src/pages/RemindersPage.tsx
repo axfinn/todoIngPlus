@@ -69,6 +69,8 @@ const RemindersPage: React.FC = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string,string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [preview, setPreview] = useState<any|null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const validate = (draft: CreateReminderForm) => {
     const errs: Record<string,string> = {};
@@ -88,9 +90,9 @@ const RemindersPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get('/reminders');
-      // 后端返回 {reminders:[{...}]}
-  const list = response.data.reminders || [];
+      // 优先调用简化接口，加快响应
+      const response = await api.get('/reminders/simple');
+      const list = response.data.reminders || response.data?.data || [];
       // 归一化 reminder_times / reminderTimes，防止 null 导致渲染 join 报错
       const normalized: ReminderItem[] = list.map((r: any) => {
         let times: string[] = [];
@@ -110,7 +112,7 @@ const RemindersPage: React.FC = () => {
         };
       });
       // 不再直接过滤无效ID，生成临时ID以便列表显示，便于调试后端问题
-      const enriched: ReminderItem[] = normalized.map((r: any, idx: number) => {
+  const enriched: ReminderItem[] = normalized.map((r: any, idx: number) => {
         if (isValidHex24(r.id)) return r;
         // 尝试解析可能的 MongoDB Extended JSON 格式 { _id: { $oid: '...' } }
         const maybeOid = r._id?.$oid;
@@ -198,6 +200,15 @@ const RemindersPage: React.FC = () => {
     }
   };
 
+  const handleToggleActive = async (reminderId: string) => {
+    try {
+      await api.post(`/reminders/${reminderId}/toggle_active`);
+      await fetchReminders();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to toggle reminder');
+    }
+  };
+
   // 暂停提醒
   const handleSnoozeReminder = async (reminderId: string, minutes: number) => {
     if (!isValidHex24(reminderId)) {
@@ -226,6 +237,28 @@ const RemindersPage: React.FC = () => {
       custom_message: ''
     });
     setFormErrors({});
+    setPreview(null);
+  };
+
+  // 预览防抖
+  const previewTimer = React.useRef<number | null>(null);
+  const schedulePreview = () => {
+    if (previewTimer.current) window.clearTimeout(previewTimer.current);
+    previewTimer.current = window.setTimeout(() => { runPreview(); }, 400);
+  };
+  const runPreview = async () => {
+    if (!formData.event_id || !formData.reminder_times.some(t=>t.trim())) { setPreview(null); return; }
+    try {
+      setPreviewLoading(true);
+      const resp = await api.post('/reminders/preview', {
+        event_id: formData.event_id,
+        advance_days: formData.advance_days,
+        reminder_times: formData.reminder_times.filter(t=>t.trim())
+      });
+      setPreview(resp.data);
+    } catch {
+      setPreview(null);
+    } finally { setPreviewLoading(false); }
   };
 
   // 处理表单输入变化
@@ -236,7 +269,7 @@ const RemindersPage: React.FC = () => {
       setFormErrors(validate(next));
       return next;
     });
-    if (name === 'event_id') {
+  if (name === 'event_id') {
       // 若选择的事件不在当前 events 列表，提示错误（可能是加载失败或过期）
       if (value && !events.find(ev => ev.id === value)) {
         setFormErrors(fe => ({ ...fe, event_id: t('reminders.validation.eventInvalid','Event invalid or not loaded') }));
@@ -249,6 +282,7 @@ const RemindersPage: React.FC = () => {
       const times = [...prev.reminder_times]; times[idx] = value; const next = { ...prev, reminder_times: times };
       setFormErrors(validate(next)); return next;
     });
+    schedulePreview();
   };
   const addTimeField = () => setFormData(prev => ({ ...prev, reminder_times: [...prev.reminder_times, ''] }));
   const removeTimeField = (idx: number) => setFormData(prev => ({ ...prev, reminder_times: prev.reminder_times.filter((_,i)=>i!==idx) }));
@@ -288,9 +322,14 @@ const RemindersPage: React.FC = () => {
             <i className="bi bi-bell me-2"></i>
             {t('reminders.title')}
           </h1>
+          <div className="d-flex gap-2">
+          <button className="btn btn-outline-secondary" onClick={fetchReminders} title={t('common.refresh','Refresh')}>
+            <i className="bi bi-arrow-clockwise" />
+          </button>
           <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
             <i className="bi bi-plus-lg me-1"></i>{t('reminders.create')}
           </button>
+          </div>
         </div>
       </div>
 
@@ -360,6 +399,9 @@ const RemindersPage: React.FC = () => {
                                 3h
                               </button>
                             </div>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={() => handleToggleActive(reminder.id)} title={reminder.is_active ? t('reminders.deactivate','Deactivate') : t('reminders.activate','Activate')}>
+                              {reminder.is_active ? <i className="bi bi-pause" /> : <i className="bi bi-play" />}
+                            </button>
                             <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteReminder(reminder.id)} title={t('reminders.deleteConfirm')}>
                               <i className="bi bi-trash"></i>
                             </button>
@@ -449,6 +491,19 @@ const RemindersPage: React.FC = () => {
                     ))}
                     <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addTimeField}>{t('reminders.addTime','Add Time')}</button>
                     {formErrors.reminder_times && <div className="text-danger small mt-1">{formErrors.reminder_times}</div>}
+                    {preview && (
+                      <div className="alert alert-info mt-3 py-2 px-3 small mb-0">
+                        <div className="fw-bold mb-1"><i className="bi bi-eye me-1"/> {t('reminders.preview','Preview')}</div>
+                        <div>{preview.schedule_text}</div>
+                        {preview.next_send && (<div className="mt-1">{t('reminders.nextSend','Next send')}: {formatDateTime(preview.next_send)}</div>)}
+                        {Array.isArray(preview.validation_errors) && preview.validation_errors.length>0 && (
+                          <ul className="mt-1 mb-0 text-danger">
+                            {preview.validation_errors.map((er:string,i:number)=>(<li key={i}>{er}</li>))}
+                          </ul>
+                        )}
+                        {previewLoading && <div className="text-muted mt-1"><span className="spinner-border spinner-border-sm"/> {t('common.loading','Loading')}...</div>}
+                      </div>
+                    )}
                   </div>
                   <div className="mb-3">
                     <label htmlFor="reminder_type" className="form-label">{t('reminders.reminderType', 'Reminder Type')} *</label>
