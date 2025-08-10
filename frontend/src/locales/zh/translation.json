@@ -342,9 +342,19 @@
     "validation": {
       "titleRequired": "标题为必填项",
       "dateRequired": "事件日期为必填项",
-      "importanceRange": "重要级别必须在 1 到 5 之间"
+      "importanceRange": "重要级别必须在 1 到 5 之间",
+      "reminderTimeRequired": "至少需要一个提醒时间",
+      "reminderTimeFormat": "时间格式需为 HH:MM",
+      "reminderAdvanceNonNegative": "提前天数必须 ≥ 0"
     },
-    "list": "事件列表"
+    "list": "事件列表",
+    "needReminder": "需要提醒",
+    "reminderAdvance": "提前天数",
+    "reminderTimes": "提醒时间",
+    "reminderType": "提醒方式",
+    "reminderMessage": "自定义提醒内容",
+    "reminderMessagePlaceholder": "留空使用默认模板",
+    "reminderCreateFailed": "创建提醒失败"
   },
   "reminders": {
     "title": "提醒",

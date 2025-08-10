@@ -196,8 +196,22 @@
     "creating": "Creating...",
     "repeats": "Repeats {{pattern}} (every {{interval}})",
     "actions": "Actions",
-    "validation": {"titleRequired": "Title is required","dateRequired": "Event date is required","importanceRange": "Importance must be between 1 and 5"},
-    "list": "Event List"
+    "validation": {
+      "titleRequired": "Title is required",
+      "dateRequired": "Event date is required",
+      "importanceRange": "Importance must be between 1 and 5",
+      "reminderTimeRequired": "At least one reminder time is required",
+      "reminderTimeFormat": "Time must be in HH:MM format",
+      "reminderAdvanceNonNegative": "Advance days must be ≥ 0"
+    },
+    "list": "Event List",
+    "needReminder": "Need Reminder",
+    "reminderAdvance": "Advance Days",
+    "reminderTimes": "Reminder Times",
+    "reminderType": "Reminder Type",
+    "reminderMessage": "Custom Reminder Message",
+    "reminderMessagePlaceholder": "Leave empty to use template",
+    "reminderCreateFailed": "Reminder creation failed"
   },
   "reminders": {
     "title": "Reminders",

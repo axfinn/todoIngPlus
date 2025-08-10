@@ -36,6 +36,12 @@ interface CreateEventForm {
   location: string;
   is_all_day: boolean;
   recurrence_type: string;     // none / daily / weekly / monthly / yearly
+  // 新增提醒相关字段
+  need_reminder: boolean;
+  reminder_advance_days: number;
+  reminder_times: string[];
+  reminder_type: 'app' | 'email' | 'both';
+  reminder_message: string;
 }
 
 const EventsPage: React.FC = () => {
@@ -75,7 +81,12 @@ const EventsPage: React.FC = () => {
     importance_level: 3,
     location: '',
     is_all_day: false,
-    recurrence_type: 'none'
+    recurrence_type: 'none',
+    need_reminder: false,
+    reminder_advance_days: 0,
+    reminder_times: ['09:00'],
+    reminder_type: 'app',
+    reminder_message: ''
   };
   const [formData, setFormData] = useState<CreateEventForm>(initialForm);
   const [formErrors, setFormErrors] = useState<Record<string,string>>({});
@@ -86,6 +97,12 @@ const EventsPage: React.FC = () => {
     if (!draft.title.trim()) errs.title = t('events.validation.titleRequired', 'Title is required');
     if (!draft.event_date) errs.event_date = t('events.validation.dateRequired', 'Event date required');
     if (draft.importance_level < 1 || draft.importance_level > 5) errs.importance_level = t('events.validation.importanceRange', 'Importance 1-5');
+    if (draft.need_reminder) {
+      const times = draft.reminder_times.filter(v=> v.trim());
+      if (!times.length) errs.reminder_times = t('events.validation.reminderTimeRequired','Reminder time required');
+      times.forEach(tm=> { if(!/^\d{2}:\d{2}$/.test(tm)) errs.reminder_times = t('events.validation.reminderTimeFormat','Time HH:MM'); });
+      if (draft.reminder_advance_days < 0) errs.reminder_advance_days = t('events.validation.reminderAdvanceNonNegative','Advance days >=0');
+    }
     return errs;
   };
   const isFormValid = useMemo(()=> Object.keys(validate(formData)).length===0, [formData]);
@@ -149,8 +166,24 @@ const EventsPage: React.FC = () => {
         recurrence_type: formData.recurrence_type,
         raw_event_date: formData.event_date,
       };
-  await api.post('/events', payload);
-  await fetchEvents();
+      const res = await api.post('/events', payload);
+      const createdId = res.data?.id || res.data?._id;
+      if (formData.need_reminder && createdId) {
+        try {
+          const times = formData.reminder_times.filter(t=> t.trim());
+          await api.post('/reminders', {
+            event_id: createdId,
+            advance_days: formData.reminder_advance_days,
+            reminder_times: times,
+            reminder_type: formData.reminder_type,
+            custom_message: formData.reminder_message || undefined
+          });
+        } catch (re:any) {
+          console.warn('Create reminder failed', re);
+          setError(t('events.reminderCreateFailed','Event created but reminder failed'));
+        }
+      }
+      await fetchEvents();
       setShowCreateModal(false);
       resetForm();
     } catch (err: any) {
@@ -213,15 +246,33 @@ const EventsPage: React.FC = () => {
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else if (name === 'importance_level') {
       setFormData(prev => ({ ...prev, [name]: Number(value) }));
+    } else if (name === 'reminder_advance_days') {
+      setFormData(prev => ({ ...prev, [name]: Number(value) }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
     // 实时校验
   setFormErrors(() => {
-      const draft = { ...formData, [name]: type==='checkbox'? checked : (name==='importance_level'? Number(value): value) } as CreateEventForm;
+      const draft = { ...formData, [name]: type==='checkbox'? checked : (name==='importance_level'|| name==='reminder_advance_days'? Number(value): value) } as CreateEventForm;
       return validate(draft);
     });
   };
+  const handleReminderTimeChange = (idx: number, val: string) => {
+    setFormData(prev => {
+      const arr = [...prev.reminder_times];
+      arr[idx] = val;
+      const draft = { ...prev, reminder_times: arr };
+      setFormErrors(validate(draft));
+      return draft;
+    });
+  };
+  const addReminderTime = () => setFormData(prev => ({ ...prev, reminder_times: [...prev.reminder_times, '09:00'] }));
+  const removeReminderTime = (idx: number) => setFormData(prev => {
+    const arr = prev.reminder_times.filter((_,i)=> i!==idx);
+    const draft = { ...prev, reminder_times: arr };
+    setFormErrors(validate(draft));
+    return draft;
+  });
 
   const resetForm = () => setFormData(initialForm);
 
@@ -486,6 +537,45 @@ const EventsPage: React.FC = () => {
                         onChange={handleInputChange}
                       />
                     </div>
+                    <div className="col-12"><hr /></div>
+                    <div className="col-12 mb-2">
+                      <div className="form-check form-switch">
+                        <input className="form-check-input" type="checkbox" id="need_reminder" name="need_reminder" checked={formData.need_reminder} onChange={handleInputChange} />
+                        <label className="form-check-label" htmlFor="need_reminder">{t('events.needReminder','需要提醒')}</label>
+                      </div>
+                    </div>
+                    {formData.need_reminder && (
+                      <>
+                        <div className="col-md-4 mb-3">
+                          <label className="form-label" htmlFor="reminder_advance_days">{t('events.reminderAdvance','提前天数')}</label>
+                          <input type="number" min={0} id="reminder_advance_days" name="reminder_advance_days" className="form-control" value={formData.reminder_advance_days} onChange={handleInputChange} />
+                          {formErrors.reminder_advance_days && <div className="text-danger small mt-1">{formErrors.reminder_advance_days}</div>}
+                        </div>
+                        <div className="col-md-8 mb-3">
+                          <label className="form-label">{t('events.reminderTimes','提醒时间(可多个)')}</label>
+                          {formData.reminder_times.map((tm,idx)=>(
+                            <div key={idx} className="d-flex align-items-center gap-2 mb-2">
+                              <input type="time" className="form-control" value={tm} onChange={e=> handleReminderTimeChange(idx, e.target.value)} />
+                              <button type="button" className="btn btn-outline-danger btn-sm" onClick={()=> removeReminderTime(idx)} disabled={formData.reminder_times.length===1}>-</button>
+                              {idx===formData.reminder_times.length-1 && <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addReminderTime}>+</button>}
+                            </div>
+                          ))}
+                          {formErrors.reminder_times && <div className="text-danger small mt-1">{formErrors.reminder_times}</div>}
+                        </div>
+                        <div className="col-md-4 mb-3">
+                          <label className="form-label" htmlFor="reminder_type">{t('events.reminderType','提醒方式')}</label>
+                          <select id="reminder_type" name="reminder_type" className="form-select" value={formData.reminder_type} onChange={handleInputChange}>
+                            <option value="app">App</option>
+                            <option value="email">Email</option>
+                            <option value="both">Both</option>
+                          </select>
+                        </div>
+                        <div className="col-md-8 mb-3">
+                          <label className="form-label" htmlFor="reminder_message">{t('events.reminderMessage','自定义提醒内容')}</label>
+                          <input type="text" id="reminder_message" name="reminder_message" className="form-control" value={formData.reminder_message} onChange={handleInputChange} placeholder={t('events.reminderMessagePlaceholder','可留空使用默认模板')} />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="modal-footer">
