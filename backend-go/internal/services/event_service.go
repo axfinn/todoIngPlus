@@ -72,6 +72,21 @@ func (s *EventService) CreateEvent(ctx context.Context, userID primitive.ObjectI
 		return nil, fmt.Errorf("failed to create event: %w", err)
 	}
 
+	// 同步写入创建系统时间线条目，便于前端立即看到
+	func() {
+		defer func() { recover() }()
+		_, _ = s.db.Collection("event_comments").InsertOne(ctx, bson.M{
+			"_id":        primitive.NewObjectID(),
+			"event_id":   event.ID,
+			"user_id":    event.UserID,
+			"type":       "system",
+			"content":    "created",
+			"meta":       bson.M{"action": "create", "date": event.EventDate.Format(time.RFC3339)},
+			"created_at": time.Now(),
+			"updated_at": time.Now(),
+		})
+	}()
+
 	return event, nil
 }
 
@@ -184,7 +199,7 @@ func (s *EventService) DeleteEvent(ctx context.Context, userID, eventID primitiv
 }
 
 // AdvanceEvent 推进事件到下一周期（若为非重复则标记为不活跃）
-func (s *EventService) AdvanceEvent(ctx context.Context, userID, eventID primitive.ObjectID) (*models.Event, error) {
+func (s *EventService) AdvanceEvent(ctx context.Context, userID, eventID primitive.ObjectID, reason string) (*models.Event, error) {
 	// 获取当前事件
 	event, err := s.GetEvent(ctx, userID, eventID)
 	if err != nil {
@@ -200,12 +215,38 @@ func (s *EventService) AdvanceEvent(ctx context.Context, userID, eventID primiti
 		// 可选：记录 last_triggered_at
 		update["last_triggered_at"] = now
 	} else {
-		// 计算下一次发生时间（基于当前或当前之后的现在）
-		next := event.GetNextOccurrence(now)
-		if next == nil { // 无后续, 标记 inactive
+		// 手动推进：始终在当前 event_date 基础上 +1 周期（符合用户“下一次”预期）
+		var next time.Time
+		switch event.RecurrenceType {
+		case "daily":
+			next = event.EventDate.AddDate(0, 0, 1)
+		case "weekly":
+			next = event.EventDate.AddDate(0, 0, 7)
+		case "monthly":
+			next = event.EventDate.AddDate(0, 1, 0)
+		case "yearly":
+			next = event.EventDate.AddDate(1, 0, 0)
+		default:
+			// 未知类型，保守：标记 inactive
 			update["is_active"] = false
-		} else {
-			update["event_date"] = *next
+		}
+		if !next.IsZero() {
+			// 若用户重复快速点击，确保 next 在现在之后；若仍在过去，循环推进到未来
+			for next.Before(now) { // 理论上只在过去日期数据异常时出现
+				switch event.RecurrenceType {
+				case "daily":
+					next = next.AddDate(0, 0, 1)
+				case "weekly":
+					next = next.AddDate(0, 0, 7)
+				case "monthly":
+					next = next.AddDate(0, 1, 0)
+				case "yearly":
+					next = next.AddDate(1, 0, 0)
+				default:
+					break
+				}
+			}
+			update["event_date"] = next
 			update["last_triggered_at"] = now
 		}
 	}
@@ -215,31 +256,67 @@ func (s *EventService) AdvanceEvent(ctx context.Context, userID, eventID primiti
 		return nil, fmt.Errorf("failed to advance event: %w", err)
 	}
 	updated, err := s.GetEvent(ctx, userID, eventID)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
-	// 写入系统时间线条目（不阻断主流程）
-	go func(oldT time.Time, newEv *models.Event) {
-		defer func(){ recover() }()
-		// 仅在变化或被标记为 inactive 时记录
+	// 重新计算相关提醒 next_send（非阻断，错误忽略）
+	go func(ev *models.Event) {
+		defer func() { recover() }()
+		cur, err2 := s.reminderColl.Find(context.Background(), bson.M{"event_id": ev.ID, "is_active": true})
+		if err2 != nil {
+			return
+		}
+		defer cur.Close(context.Background())
+		for cur.Next(context.Background()) {
+			var r models.Reminder
+			if err := cur.Decode(&r); err == nil {
+				// 仅当未配置绝对时间时才基于事件时间重新计算
+				if len(r.AbsoluteTimes) == 0 {
+					nx := r.CalculateNextSendTime(*ev)
+					upd := bson.M{"updated_at": time.Now()}
+					if nx != nil {
+						upd["next_send"] = *nx
+					} else {
+						upd["next_send"] = nil
+					}
+					_, _ = s.reminderColl.UpdateByID(context.Background(), r.ID, bson.M{"$set": upd})
+				}
+			}
+		}
+	}(updated)
+
+	// 同步写入系统时间线条目，确保前端立即可见
+	func(oldT time.Time, newEv *models.Event, reason string) {
+		defer func() { recover() }()
 		content := "advanced"
 		meta := map[string]string{
-			"old": oldT.Format(time.RFC3339),
+			"action":     "advance",
+			"old":        oldT.Format(time.RFC3339),
 			"recurrence": newEv.RecurrenceType,
-			"active": fmt.Sprintf("%v", newEv.IsActive),
+			"active":     fmt.Sprintf("%v", newEv.IsActive),
 		}
-		if newEv.EventDate.After(oldT) { meta["new"] = newEv.EventDate.Format(time.RFC3339) }
-		// 直接插入 event_comments 集合
-		_, _ = s.db.Collection("event_comments").InsertOne(context.Background(), bson.M{
-			"_id": primitive.NewObjectID(),
-			"event_id": newEv.ID,
-			"user_id": newEv.UserID,
-			"type": "system",
-			"content": content,
-			"meta": meta,
+		if reason != "" {
+			meta["reason"] = reason
+		}
+		if newEv.EventDate.After(oldT) {
+			meta["new"] = newEv.EventDate.Format(time.RFC3339)
+		}
+		joined := content
+		if reason != "" {
+			joined += ": " + reason
+		}
+		_, _ = s.db.Collection("event_comments").InsertOne(ctx, bson.M{
+			"_id":        primitive.NewObjectID(),
+			"event_id":   newEv.ID,
+			"user_id":    newEv.UserID,
+			"type":       "system",
+			"content":    joined,
+			"meta":       meta,
 			"created_at": time.Now(),
 			"updated_at": time.Now(),
 		})
-	}(oldDate, updated)
+	}(oldDate, updated, reason)
 
 	return updated, nil
 }

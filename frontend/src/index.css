@@ -24,6 +24,25 @@ body.has-bg::before {
   opacity: 0;
   transition: opacity .7s ease;
 }
+/* 推进高亮状态 */
+.event-advanced, .reminder-advanced {
+  position: relative;
+  animation: pulse-advance 1.2s ease-in-out 2;
+  outline: 2px solid rgba(102,186,255,0.8) !important;
+  outline-offset: 0;
+}
+.event-advanced .card-body { /* 卡片内部更柔和背景闪烁 */
+  animation: subtleFlash 2s linear 1;
+}
+@keyframes pulse-advance {
+  0% { box-shadow: 0 0 0 0 rgba(56,189,248,0.7); }
+  50% { box-shadow: 0 0 0 6px rgba(56,189,248,0); }
+  100% { box-shadow: 0 0 0 0 rgba(56,189,248,0); }
+}
+@keyframes subtleFlash {
+  0% { background-color: rgba(56,189,248,0.15); }
+  100% { background-color: transparent; }
+}
 body.has-bg.bg-visible::before { opacity: 1; }
 @media (prefers-color-scheme: dark) {
   body.has-bg::before { filter: blur(var(--app-bg-blur-dark, calc(var(--app-bg-blur,20px) * 1.1))) brightness(0.55) saturate(1.25); }

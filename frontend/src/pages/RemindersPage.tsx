@@ -69,6 +69,9 @@ const RemindersPage: React.FC = () => {
   };
   const { t, i18n } = useTranslation();
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
+  const [recentEventAdvance, setRecentEventAdvance] = useState<Record<string, number>>({}); // eventId -> expireTs
+  // 清理过期
+  useEffect(()=> { const id = setInterval(()=> { const now=Date.now(); setRecentEventAdvance(prev=> { let ch=false; const nxt:Record<string,number>={}; Object.entries(prev).forEach(([k,v])=> { if(v>now) nxt[k]=v; else ch=true; }); return ch? nxt: prev; }); }, 5000); return ()=> clearInterval(id); }, []);
   // const dispatch: AppDispatch = useDispatch();
   // 通过 RTK Query 预热提醒 upcoming 缓存
   useGetUpcomingQuery({ sources: ['reminder'], hours: 24 });
@@ -338,6 +341,9 @@ const RemindersPage: React.FC = () => {
   useEffect(() => {
   fetchReminders();
   fetchEvents();
+  const onAdv = (e: any) => { const evId = e?.detail?.eventId; if (evId) { setRecentEventAdvance(prev=> ({...prev,[evId]: Date.now()+10000})); fetchReminders(); } };
+  window.addEventListener('eventAdvanced', onAdv as any);
+  return () => window.removeEventListener('eventAdvanced', onAdv as any);
   // RTK Query 缓存自动维护
   }, []);
 
@@ -395,7 +401,7 @@ const RemindersPage: React.FC = () => {
                   </thead>
                   <tbody>
                     {list.map((reminder) => (
-                      <tr key={reminder.id} data-reminder-id={reminder.id} className={reminder._invalid_id ? 'table-warning' : ''}>
+                      <tr key={reminder.id} data-reminder-id={reminder.id} className={`${reminder._invalid_id ? 'table-warning' : ''} ${recentEventAdvance[reminder.event_id]? ' reminder-advanced':''}`}>
                         <td>
                           {reminder.custom_message || '-'}
                           <div className="text-muted small">ID: {reminder.id}{reminder._invalid_id && <span className="ms-2 badge bg-warning text-dark">invalid</span>}</div>

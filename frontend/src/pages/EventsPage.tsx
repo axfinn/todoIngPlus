@@ -95,6 +95,24 @@ const EventsPage: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string,string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [advancingId, setAdvancingId] = useState<string|null>(null);
+  const [advanceDialog, setAdvanceDialog] = useState<{open:boolean; eventId:string|null; title:string; reason:string; submitting:boolean}>({open:false,eventId:null,title:'',reason:'',submitting:false});
+  // 简易 toast / 最近推进高亮
+  const [toast, setToast] = useState<{ type: 'success'|'error'; message: string } | null>(null);
+  const [recentAdvanced, setRecentAdvanced] = useState<Record<string, number>>({}); // id -> expireTs
+  // 清理过期高亮
+  useEffect(()=> {
+    const id = setInterval(()=> {
+      const now = Date.now();
+      setRecentAdvanced(prev => {
+        let changed = false; const next: Record<string, number> = {};
+        Object.entries(prev).forEach(([k,exp])=> { if (exp > now) next[k]=exp; else changed = true; });
+        return changed? next : prev;
+      });
+    }, 4000);
+    return ()=> clearInterval(id);
+  }, []);
+  // 自动隐藏 toast
+  useEffect(()=> { if (!toast) return; const t = setTimeout(()=> setToast(null), 3000); return ()=> clearTimeout(t); }, [toast]);
 
   const validate = (draft: CreateEventForm) => {
     const errs: Record<string,string> = {};
@@ -142,14 +160,25 @@ const EventsPage: React.FC = () => {
     }
   };
 
-  const handleAdvance = async (id: string) => {
+  const openAdvanceDialog = (id:string, title:string) => setAdvanceDialog({open:true,eventId:id,title,reason:'',submitting:false});
+  const closeAdvanceDialog = () => { if(advanceDialog.submitting) return; setAdvanceDialog({open:false,eventId:null,title:'',reason:'',submitting:false}); };
+  const submitAdvance = async () => {
+    if(!advanceDialog.eventId) return;
+    const id = advanceDialog.eventId;
     setAdvancingId(id);
+    setAdvanceDialog(p=> ({...p, submitting:true }));
     try {
-      const res = await api.post(`/events/${id}/advance`);
-      // 更新本地列表
+      const payload = advanceDialog.reason.trim()? { reason: advanceDialog.reason.trim() }: {};
+      const res = await api.post(`/events/${id}/advance`, payload);
       setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, event_date: res.data.event_date, is_active: res.data.is_active } : ev));
-    } catch (err: any) {
+      setRecentAdvanced(prev => ({ ...prev, [id]: Date.now() + 10000 }));
+      window.dispatchEvent(new CustomEvent('eventAdvanced', { detail: { eventId: id } }));
+      setToast({ type: 'success', message: t('advanceSuccess','已推进') });
+      closeAdvanceDialog();
+    } catch(err:any) {
       setError(err.response?.data || err.message || 'Advance failed');
+      setToast({ type: 'error', message: t('advanceFailed','推进失败') });
+      setAdvanceDialog(p=> ({...p, submitting:false }));
     } finally { setAdvancingId(null); }
   };
 
@@ -348,6 +377,12 @@ const EventsPage: React.FC = () => {
           <button type="button" className="btn-close" onClick={() => setError(null)}></button>
         </div>
       )}
+      {toast && (
+        <div className={`alert alert-${toast.type==='success'?'success':'danger'} alert-dismissible fade show position-fixed top-0 end-0 m-3 shadow`} role="alert" style={{zIndex:1080,minWidth:220}}>
+          {toast.message}
+          <button type="button" className="btn-close" onClick={()=> setToast(null)}></button>
+        </div>
+      )}
 
       <DataState
         loading={isLoading}
@@ -372,7 +407,7 @@ const EventsPage: React.FC = () => {
                   </thead>
                   <tbody>
                     {list.map(event => (
-                      <tr key={event.id} data-event-id={event.id} className="cursor-pointer" onClick={(e)=> { if(!(e.target as HTMLElement).closest('.btn,button')) navigate(`/events/${event.id}`); }}>
+                      <tr key={event.id} data-event-id={event.id} className={`cursor-pointer${recentAdvanced[event.id]?' event-advanced':''}`} onClick={(e)=> { if(!(e.target as HTMLElement).closest('.btn,button')) navigate(`/events/${event.id}`); }}>
                         <td>
                           <div className="d-flex flex-column">
                             <span className="fw-semibold text-truncate" title={event.title}>{event.title}</span>
@@ -390,7 +425,7 @@ const EventsPage: React.FC = () => {
                         <td>
                           <div className="btn-group btn-group-sm">
                             <button type="button" className="btn btn-outline-secondary" onClick={()=> navigate(`/events/${event.id}`)} aria-label="open"><i className="bi bi-box-arrow-up-right" /></button>
-                            {event.recurrence_type!=='none' && <button type="button" className="btn btn-outline-primary" disabled={advancingId===event.id} onClick={()=> handleAdvance(event.id)} aria-label={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
+                            {event.recurrence_type!=='none' && <button type="button" className="btn btn-outline-primary" disabled={advancingId===event.id} onClick={()=> openAdvanceDialog(event.id, event.title)} aria-label={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
                             <button type="button" className="btn btn-outline-danger" onClick={()=> handleDeleteEvent(event.id)} aria-label="delete"><i className="bi bi-trash" /></button>
                             <button type="button" className="btn btn-outline-info" onClick={()=> { setTimelineEventId(event.id); setTimelineEventTitle(event.title); }} aria-label="timeline"><i className="bi bi-clock-history" /></button>
                           </div>
@@ -412,7 +447,7 @@ const EventsPage: React.FC = () => {
                     const past = diff < 0; const abs = Math.abs(diff); const d = Math.floor(abs/86400000); const h = Math.floor(abs%86400000/3600000); const m = Math.floor(abs%3600000/60000);
                     const label = d>0? `${d}d ${h}h` : h>0? `${h}h ${m}m` : `${m}m`;
                     return (
-                      <li key={e.id} data-event-id={e.id} className={`timeline-item ${past?'past':''}`}>
+                      <li key={e.id} data-event-id={e.id} className={`timeline-item ${past?'past':''}${recentAdvanced[e.id]?' event-advanced':''}`}>
                         <div className="timeline-dot" />
                         <div className="timeline-content" onClick={(ev)=> { if(!(ev.target as HTMLElement).closest('.btn')) navigate(`/events/${e.id}`); }}>
                           <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -426,7 +461,7 @@ const EventsPage: React.FC = () => {
                           <div className="mt-2 d-flex gap-2 flex-wrap">
                             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=> navigate(`/events/${e.id}`)}>{t('common.view','查看')}</button>
                             <button type="button" className="btn btn-sm btn-outline-info" onClick={()=> { setTimelineEventId(e.id); setTimelineEventTitle(e.title); }}>{t('events.timeline','时间线')}</button>
-                            <button type="button" className="btn btn-sm btn-outline-success" onClick={async()=> { try { await api.post(`/events/${e.id}/advance`); await fetchEvents(); } catch(err){ console.warn('advance failed', err);} }}>{t('events.advanceNext','推进')}</button>
+                            {e.recurrence_type!=='none' && <button type="button" className="btn btn-sm btn-outline-success" disabled={advancingId===e.id} onClick={()=> openAdvanceDialog(e.id, e.title)}>{advancingId===e.id? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>: t('events.advanceNext','推进')}</button>}
                           </div>
                         </div>
                       </li>
@@ -440,7 +475,7 @@ const EventsPage: React.FC = () => {
             return (
               <ul className="list-group event-compact-list">
                 {list.map(event => (
-                  <li key={event.id} data-event-id={event.id} className="list-group-item d-flex gap-3 align-items-start flex-wrap" role="button" onClick={(e)=> { if(!(e.target as HTMLElement).closest('.btn,button')) navigate(`/events/${event.id}`); }}>
+                  <li key={event.id} data-event-id={event.id} className={`list-group-item d-flex gap-3 align-items-start flex-wrap${recentAdvanced[event.id]?' event-advanced':''}`} role="button" onClick={(e)=> { if(!(e.target as HTMLElement).closest('.btn,button')) navigate(`/events/${event.id}`); }}>
                     <div className="d-flex flex-column flex-grow-1 min-w-0">
                       <div className="d-flex align-items-center gap-2 mb-1">
                         <span className="fw-semibold text-truncate" style={{maxWidth:'18rem'}} title={event.title}>{event.title}</span>
@@ -456,7 +491,7 @@ const EventsPage: React.FC = () => {
                     </div>
                     <div className="btn-group btn-group-sm ms-auto">
                       <button type="button" className="btn btn-outline-secondary" onClick={()=> navigate(`/events/${event.id}`)} aria-label="open"><i className="bi bi-box-arrow-up-right" /></button>
-                      {event.recurrence_type!=='none' && <button type="button" className="btn btn-outline-primary" disabled={advancingId===event.id} onClick={()=> handleAdvance(event.id)} aria-label={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
+                      {event.recurrence_type!=='none' && <button type="button" className="btn btn-outline-primary" disabled={advancingId===event.id} onClick={()=> openAdvanceDialog(event.id, event.title)} aria-label={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
                       <button type="button" className="btn btn-outline-info" onClick={()=> { setTimelineEventId(event.id); setTimelineEventTitle(event.title); }} aria-label="timeline"><i className="bi bi-clock-history" /></button>
                       <button type="button" className="btn btn-outline-danger" onClick={()=> handleDeleteEvent(event.id)} aria-label="delete"><i className="bi bi-trash" /></button>
                     </div>
@@ -470,7 +505,7 @@ const EventsPage: React.FC = () => {
             <div className="row">
               {list.map((event) => (
                 <div key={event.id} data-event-id={event.id} className="col-xl-4 col-lg-6 mb-3">
-                  <div className="card h-100 event-card" role="button" data-importance={event.importance_level} onClick={(e)=> { if(!(e.target as HTMLElement).closest('.dropdown,.btn-group,button')) navigate(`/events/${event.id}`); }}>
+                  <div className={`card h-100 event-card${recentAdvanced[event.id]?' event-advanced':''}`} role="button" data-importance={event.importance_level} onClick={(e)=> { if(!(e.target as HTMLElement).closest('.dropdown,.btn-group,button')) navigate(`/events/${event.id}`); }}>
                     <div className="event-accent" />
                     <div className="card-body d-flex flex-column">
                       <h6 className="card-title d-flex justify-content-between align-items-start gap-2">
@@ -491,7 +526,7 @@ const EventsPage: React.FC = () => {
                                 </button>
                               </li>
                             </ul>
-                            {event.recurrence_type!=='none' && <button className="btn btn-sm btn-outline-primary" disabled={advancingId===event.id} onClick={()=> handleAdvance(event.id)} title={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
+                            {event.recurrence_type!=='none' && <button className="btn btn-sm btn-outline-primary" disabled={advancingId===event.id} onClick={()=> openAdvanceDialog(event.id, event.title)} title={t('events.advanceNext','推进')}><i className={`bi bi-fast-forward${advancingId===event.id? ' spin':''}`}></i></button>}
                           </div>
                         </div>
                       </h6>
@@ -745,6 +780,30 @@ const EventsPage: React.FC = () => {
           eventTitle={timelineEventTitle}
           onClose={() => { setTimelineEventId(null); setTimelineEventTitle(''); }}
         />
+      )}
+      {advanceDialog.open && (
+        <div className="modal fade show d-block" tabIndex={-1} style={{background:'rgba(0,0,0,0.5)'}} role="dialog" aria-modal="true">
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{t('events.advanceReasonTitle','推进事件')}</h5>
+                <button type="button" className="btn-close" aria-label={t('common.close','关闭')} onClick={closeAdvanceDialog} disabled={advanceDialog.submitting}></button>
+              </div>
+              <div className="modal-body">
+                <p className="small text-muted mb-2">{t('events.advanceReasonHint','可选地填写推进原因，便于审计与回溯。留空也可以。')}</p>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">{t('events.advanceReasonLabel','原因')}</label>
+                  <textarea className="form-control" rows={3} placeholder={t('events.advanceReasonPlaceholder','例如：客户延迟 / 需要顺延一次')} value={advanceDialog.reason} onChange={e=> setAdvanceDialog(p=> ({...p, reason:e.target.value}))} disabled={advanceDialog.submitting}></textarea>
+                </div>
+                <div className="alert alert-info py-2 mb-0 small"><i className="bi bi-info-circle me-1" />{t('events.advanceReasonInfo','点击确认后：事件日期按其重复规则顺延一个周期，相关相对提醒将自动重排。')}</div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeAdvanceDialog} disabled={advanceDialog.submitting}>{t('common.cancel','取消')}</button>
+                <button type="button" className="btn btn-primary" onClick={submitAdvance} disabled={advanceDialog.submitting}>{advanceDialog.submitting? (<><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>{t('events.advancing','推进中')}</>) : t('events.advanceConfirm','确认推进')}</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

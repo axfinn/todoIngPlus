@@ -14,6 +14,7 @@ import (
 	"github.com/axfinn/todoIng/backend-go/internal/observability"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
@@ -129,6 +130,32 @@ func (d *EventDeps) ListEventTimeline(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "timeline", err.Error())
 		return
+	}
+	// 若无任何时间线记录，尝试生成一个系统“created”记录（防止前端完全空白 & 兼容历史数据）
+	if len(items) == 0 && beforeOID == nil { // 仅第一页才 backfill
+		// 读取事件创建时间
+		var evDoc struct {
+			ID        primitive.ObjectID `bson:"_id"`
+			UserID    primitive.ObjectID `bson:"user_id"`
+			CreatedAt time.Time          `bson:"created_at"`
+			EventDate time.Time          `bson:"event_date"`
+		}
+		if e := d.DB.Collection("events").FindOne(r.Context(), bson.M{"_id": evID}).Decode(&evDoc); e == nil {
+			// 插入一条 system comment
+			newID := primitive.NewObjectID()
+			_, _ = d.DB.Collection("event_comments").InsertOne(r.Context(), bson.M{
+				"_id":        newID,
+				"event_id":   evID,
+				"user_id":    evDoc.UserID,
+				"type":       "system",
+				"content":    "created",
+				"meta":       bson.M{"action": "create", "date": evDoc.EventDate.Format(time.RFC3339)},
+				"created_at": evDoc.CreatedAt,
+				"updated_at": evDoc.CreatedAt,
+			})
+			// 重新拉取
+			items, _ = svc.ListTimeline(r.Context(), primitive.NilObjectID, evID, limit, beforeOID)
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"items": items, "count": len(items)})
@@ -486,6 +513,48 @@ func (d *EventDeps) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(event)
 }
 
+// AdvanceEvent 推进事件到下一周期或完成一次性事件
+func (d *EventDeps) AdvanceEvent(w http.ResponseWriter, r *http.Request) {
+	userID := GetUserID(r)
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	objectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+	vars := mux.Vars(r)
+	eventIDStr := vars["id"]
+	eventID, err := primitive.ObjectIDFromHex(eventIDStr)
+	if err != nil {
+		http.Error(w, "Invalid event ID", http.StatusBadRequest)
+		return
+	}
+	// 可选解析 body reason
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if r.Body != nil {
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		_ = dec.Decode(&body) // 忽略解析错误（可能无 body）
+	}
+	eventService := services.NewEventService(d.DB)
+	event, err := eventService.AdvanceEvent(context.Background(), objectID, eventID, body.Reason)
+	if err != nil {
+		if err.Error() == "event not found" {
+			http.Error(w, "Event not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Failed to advance event: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(event)
+}
+
 // DeleteEvent 删除事件
 func (d *EventDeps) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserID(r)
@@ -774,6 +843,8 @@ func SetupEventRoutes(r *mux.Router, deps *EventDeps) {
 	s.Handle("/{id:[0-9a-fA-F]{24}}", Auth(http.HandlerFunc(deps.GetEvent))).Methods(http.MethodGet)
 	s.Handle("/{id:[0-9a-fA-F]{24}}", Auth(http.HandlerFunc(deps.UpdateEvent))).Methods(http.MethodPut)
 	s.Handle("/{id:[0-9a-fA-F]{24}}", Auth(http.HandlerFunc(deps.DeleteEvent))).Methods(http.MethodDelete)
+	// 推进/完成
+	s.Handle("/{id:[0-9a-fA-F]{24}}/advance", Auth(http.HandlerFunc(deps.AdvanceEvent))).Methods(http.MethodPost)
 
 	// 评论 / 时间线 (挂在 /api/events/{id}/comments ... )
 	s.Handle("/{id:[0-9a-fA-F]{24}}/comments", Auth(http.HandlerFunc(deps.CreateEventComment))).Methods(http.MethodPost)

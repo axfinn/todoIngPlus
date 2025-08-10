@@ -35,6 +35,7 @@ const humanTime = (iso: string) => {
 };
 
 const systemLabel = (item: EventTimelineItem) => {
+  if (item.meta?.action === 'advance') return '已推进';
   if (item.meta?.kind === 'event_start') return '事件开始';
   if (item.meta?.reminder_id) return '提醒已发送';
   switch (item.type) {
@@ -56,6 +57,7 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
 
   const { t } = useTranslation();
   const fetchTimeline = useCallback(async (opts?: { more?: boolean }) => {
+    // 精简依赖，避免重复创建导致额外请求 & 潜在竞态
     if (loading || loadingMore) return;
     const isMore = !!opts?.more;
     isMore ? setLoadingMore(true) : setLoading(true);
@@ -63,28 +65,45 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
     try {
       const params = new URLSearchParams();
       params.set('limit', '50');
-      if (isMore && items.length) {
-        params.set('before_id', items[0].id); // 取最早的 id 做向前翻页
-      }
+      if (isMore && items.length) params.set('before_id', items[0].id);
       const res = await api.get(`/events/${eventId}/timeline?` + params.toString());
-      const list: EventTimelineItem[] = res.data.items || [];
+      let list: any[] = res.data.items || [];
+      // 兼容后端历史字段 / 遗留 _id 命名
+      const mapped: EventTimelineItem[] = list.map(raw => ({
+        id: raw.id || raw._id || raw.ID,
+        event_id: raw.event_id || raw.eventId,
+        user_id: raw.user_id || raw.userId,
+        type: raw.type || 'comment',
+        content: raw.content || '',
+        meta: raw.meta || {},
+        created_at: raw.created_at || raw.createdAt,
+        updated_at: raw.updated_at || raw.updatedAt || raw.created_at || raw.createdAt,
+      })).filter(it => !!it.id && !!it.created_at);
+      console.debug('[Timeline] fetched', { count: mapped.length, isMore, rawCount: list.length });
       if (isMore) {
-        if (list.length === 0) setHasMore(false);
-        setItems(prev => [...list, ...prev]); // 旧的在后，新加载的更早的在前
+        if (mapped.length === 0) setHasMore(false);
+        setItems(prev => [...mapped, ...prev]);
       } else {
-        setItems(list);
-        setHasMore(list.length === 50); // 粗略判断
-        // 滚动到底部看到最新
+        setItems(mapped);
+        setHasMore(mapped.length === 50);
         setTimeout(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, 50);
       }
     } catch (e: any) {
+      console.warn('[Timeline] fetch error', e);
       setError(e.response?.data?.message || e.message || '加载时间线失败');
     } finally {
       isMore ? setLoadingMore(false) : setLoading(false);
     }
   }, [eventId, items, loading, loadingMore]);
 
-  useEffect(() => { fetchTimeline(); }, [fetchTimeline]);
+  useEffect(() => {
+    fetchTimeline().then(()=> {
+      if (!loading && items.length===0) {
+        setTimeout(()=> { fetchTimeline(); }, 600);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   // 移除轮询：后续可与 SSE 对接（当前详情页已有 SSE，Modal 若需实时可在打开时订阅）以降低闪烁
 
@@ -94,7 +113,17 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
     setSubmitting(true);
     try {
       const res = await api.post(`/events/${eventId}/comments`, { content: input.trim(), type: 'comment' });
-      const added: EventTimelineItem = res.data;
+      const raw = res.data || {};
+      const added: EventTimelineItem = {
+        id: raw.id || raw._id || raw.ID,
+        event_id: raw.event_id || raw.eventId || eventId,
+        user_id: raw.user_id || raw.userId || '',
+        type: raw.type || 'comment',
+        content: raw.content || input.trim(),
+        meta: raw.meta || {},
+        created_at: raw.created_at || raw.createdAt || new Date().toISOString(),
+        updated_at: raw.updated_at || raw.updatedAt || raw.created_at || raw.createdAt || new Date().toISOString(),
+      };
       setItems(prev => [...prev, added]);
       setInput('');
       setTimeout(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, 30);
@@ -122,7 +151,7 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
   const cancelEdit = () => { setEditingId(null); setEditingVal(''); };
   const submitEdit = async () => {
     if(!editingId || !editingVal.trim()) { cancelEdit(); return; }
-    try { const res = await api.put(`/events/comments/${editingId}`, { content: editingVal.trim() }); const updated:EventTimelineItem = res.data; setItems(prev=> prev.map(i=> i.id===editingId? {...i, content: updated.content, updated_at: updated.updated_at}: i)); }
+  try { const res = await api.put(`/events/comments/${editingId}`, { content: editingVal.trim() }); const updatedRaw = res.data || {}; setItems(prev=> prev.map(i=> i.id===editingId? {...i, content: updatedRaw.content || editingVal.trim(), updated_at: updatedRaw.updated_at || updatedRaw.updatedAt || new Date().toISOString()}: i)); }
     catch(e:any){ setError(e.response?.data?.message || (t('common.saveFailed') as string) || '保存失败'); }
     finally { cancelEdit(); }
   };
@@ -150,10 +179,20 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
               </div>
             )}
             <div className="border rounded flex-grow-1 mb-3 position-relative timeline-wrapper" ref={listRef} style={{ overflowY: 'auto', maxHeight: '55vh', background: 'var(--bs-body-bg)' }}>
-              {loading && <div className="d-flex justify-content-center py-5 text-muted small">加载中...</div>}
+              <div className={`fade-layer ${loading? 'loading':''}`}></div>
+              {loading && (
+                <div className="p-3">
+                  {Array.from({length:5}).map((_,i)=>(
+                    <div key={i} className="placeholder-wave mb-3">
+                      <div className="placeholder col-3 me-2"></div>
+                      <div className="placeholder col-5"></div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {!loading && grouped.length === 0 && <div className="d-flex justify-content-center py-5 text-muted small">暂无记录</div>}
               {!loading && grouped.length > 0 && (
-                <ul className="timeline list-unstyled m-0 p-3">
+                <ul className="timeline list-unstyled m-0 p-3 fade-in">
                   {hasMore && (
                     <li className="text-center mb-3">
                       <button className="btn btn-outline-secondary btn-sm" disabled={loadingMore} onClick={() => fetchTimeline({ more: true })}>
@@ -230,6 +269,10 @@ const EventTimelineModal: React.FC<Props> = ({ eventId, eventTitle, onClose }) =
         .timeline-item:hover { background: rgba(0,0,0,0.03); border-radius:6px; }
         .timeline-dot { position:absolute; left:10px; top:.4rem; width:16px; height:16px; background:var(--bs-body-bg); border:2px solid var(--bs-primary); border-radius:50%; font-size:.65rem; }
         .timeline-item .badge { font-weight:500; }
+        .fade-in { animation: fadeIn .25s ease; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none;} }
+        .fade-layer.loading { position:absolute; inset:0; background:var(--bs-body-bg); opacity:.4; pointer-events:none; transition:opacity .3s; }
+        .fade-layer { position:absolute; inset:0; opacity:0; }
         @media (prefers-color-scheme: dark){ .timeline-item:hover { background: rgba(255,255,255,0.04);} .timeline-dot { background:#1e1e1e; } }
       `}</style>
     </div>
