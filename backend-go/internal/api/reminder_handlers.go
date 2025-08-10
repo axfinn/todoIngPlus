@@ -10,8 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"log"
 
 	"github.com/axfinn/todoIng/backend-go/internal/observability"
+	"github.com/axfinn/todoIng/backend-go/internal/email"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -390,6 +392,7 @@ func (d *ReminderDeps) CreateTestReminder(w http.ResponseWriter, r *http.Request
 		EventID      string `json:"event_id"`
 		Message      string `json:"message"`
 		DelaySeconds int    `json:"delay_seconds"`
+		SendEmail    *bool  `json:"send_email"` // 可选: 若提供并为 true 则强制发送邮件
 	}
 	_ = json.NewDecoder(r.Body).Decode(&payload)
 	if payload.Message == "" { payload.Message = "测试提醒" }
@@ -410,12 +413,48 @@ func (d *ReminderDeps) CreateTestReminder(w http.ResponseWriter, r *http.Request
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second); defer cancel()
 	reminder, evt, err := svc.CreateImmediateTestReminder(ctx, uid, eventID, payload.Message, payload.DelaySeconds)
 	if err != nil { http.Error(w, fmt.Sprintf("Failed to create test reminder: %v", err), http.StatusInternalServerError); return }
+
+	// 判断是否需要立即发送邮件：条件 1) 请求显式 send_email=true; 或 2) 默认策略: 测试提醒都即时尝试邮件
+	wantEmail := true
+	if payload.SendEmail != nil { wantEmail = *payload.SendEmail }
+
+	emailSent := false
+	var emailErr string
+	if wantEmail {
+		// 获取用户邮箱
+		var userDoc struct{ Email string `bson:"email"` }
+		uCtx, uCancel := context.WithTimeout(ctx, 3*time.Second); defer uCancel()
+		errFind := d.DB.Collection("users").FindOne(uCtx, bson.M{"_id": uid}).Decode(&userDoc)
+		if errFind != nil || userDoc.Email == "" {
+			emailErr = "user email not found"
+		} else {
+			// 构造邮件内容（复用 scheduler 风格）
+			subject := fmt.Sprintf("TodoIng 测试提醒：%s", evt.Title)
+			body := fmt.Sprintf("亲爱的用户,\n\n%s\n\n事件: %s\n时间: %s\n类型: %s\n\n--\nTodoIng 系统即时测试提醒\n", 
+				payload.Message,
+				evt.Title,
+				evt.EventDate.Format("2006-01-02 15:04"),
+				evt.EventType,
+			)
+			if errSend := email.SendGeneric(userDoc.Email, subject, body); errSend != nil {
+				emailErr = errSend.Error()
+				log.Printf("CreateTestReminder immediate email failed user=%s email=%s err=%v", uid.Hex(), userDoc.Email, errSend)
+			} else {
+				emailSent = true
+				log.Printf("CreateTestReminder immediate email sent user=%s to=%s subject=%s", uid.Hex(), userDoc.Email, subject)
+			}
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	resp := map[string]interface{}{
 		"reminder": reminder,
 		"event": evt,
-		"note": "Test reminder created; scheduler will pick it up automatically",
-	})
+		"email_sent": emailSent,
+		"note": "Test reminder created and immediate email attempted",
+	}
+	if emailErr != "" { resp["email_error"] = emailErr }
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // TestReminder 计算一个临时提醒的 next_send 不落库
