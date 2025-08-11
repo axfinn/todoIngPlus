@@ -189,14 +189,27 @@ func ReportToProto(report *models.Report) *pb.Report {
 		OverdueTasks:    int32(report.Statistics.OverdueTasks),
 	}
 
+	// 尝试附带任务详情（当前模型只保存 ID，后续可在 service 层预填充）
+	var taskDetails []*pb.Task
+	if len(report.Tasks) > 0 {
+		// 为避免在 convert 中直接访问数据库, 这里仅构造占位任务 (id 填充)。
+		for _, id := range report.Tasks {
+			if id == "" {
+				continue
+			}
+			taskDetails = append(taskDetails, &pb.Task{Id: id})
+		}
+	}
+
 	return &pb.Report{
 		Id:        report.ID,
 		Title:     report.Title,
 		Type:      ReportTypeToProto(report.Type),
-		StartDate: timestamppb.New(report.CreatedAt), // 使用 CreatedAt 作为开始时间
-		EndDate:   timestamppb.New(report.UpdatedAt), // 使用 UpdatedAt 作为结束时间
+		StartDate: timestamppb.New(report.CreatedAt),
+		EndDate:   timestamppb.New(report.UpdatedAt),
 		UserId:    report.UserID,
 		CreatedAt: timestamppb.New(report.CreatedAt),
+		Tasks:     taskDetails,
 		Stats:     stats,
 		Period:    report.Period,
 		Content:   report.Content,

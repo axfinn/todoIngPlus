@@ -2,632 +2,125 @@
 
 <div align="center">
 
-**高性能的 Go 语言任务管理系统后端服务**
+高性能的 Go 语言任务 / 事件 / 提醒 / 报表 后端服务
 
 [![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)](https://golang.org/)
-[![gRPC](https://img.shields.io/badge/gRPC-Ready-green.svg)](https://grpc.io/)
+[![gRPC](https://img.shields.io/badge/gRPC-Gateway-green.svg)](https://grpc.io/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-5.0+-green.svg)](https://mongodb.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com/)
-[![API Docs](https://img.shields.io/badge/API-Swagger-orange.svg)](http://localhost:5004/swagger/)
+[![API Docs](https://img.shields.io/badge/OpenAPI-Auto-orange.svg)](http://localhost:5004/swagger/)
 
 </div>
 
 ## ✨ 功能概述
 
-TodoIng Go 后端是 Node.js 版本的高性能重构，采用现代化的 Go 技术栈，提供：
+TodoIng Go 后端是原 Node 版本的性能 & 架构升级实现，现已包含完整的事件 & 提醒调度体系与统一聚合视图。
 
 ### 🎯 核心功能
 
-- ✅ **用户认证系统** - JWT 令牌认证，邮箱验证码
-- ✅ **任务管理** - 完整的 CRUD 操作，导入导出功能
-- ✅ **报表生成** - 日报、周报、月报自动生成
-- ✅ **AI 润色** - 集成 OpenAI 的报表优化功能
-- ✅ **图形验证码** - 防机器人注册登录保护
-- ✅ **邮箱验证** - 完整的邮箱验证码系统
+- ✅ 用户认证（注册 / 登录 / 邮箱验证码 / 图形验证码）
+- ✅ 任务管理（CRUD / 导入导出 / 优先级排序）
+- ✅ 事件管理（循环推进 / 时间线系统记录 / 搜索 / 下拉选项 / 日历）
+- ✅ 提醒系统（多时间点 / 提前天数 / Snooze / Toggle / Upcoming / 简化列表）
+- ✅ 提醒预览 & 测试接口（/preview 不落库、/test 即时创建并可立刻尝试发送邮件）
+- ✅ 报表生成（日报 / 周报 / 月报 + Markdown / CSV 导出 + 可扩展 AI 润色）
+- ✅ 统一聚合 Upcoming & Calendar（任务 + 事件 + 提醒合并视图，支持调试窗口）
+- ✅ SSE 通知推送（提醒发送 / 系统事件通知）
+- ✅ gRPC + HTTP 双入口（Proto 单一真实来源，自动生成 OpenAPI）
+
+### 🧱 新的 Repository 分层（部分落地）
+
+当前已经对高复杂度领域实施仓储重构：
+
+| 领域 | Repository | 内容 | 说明 |
+|------|------------|------|------|
+| Event | ✔ | 日期推进 / 循环 / 日历 / 搜索 / 系统时间线 | Service 纯组合，不含 bson |
+| Reminder | ✔ | 聚合 Lookup / next_send 计算 / Pending / Preview / ImmediateTest | Service 仅做轻度校验 |
+| Task / Report / Notification | ⏳ | 仍直接集合操作 | 后续按需迁移 |
+
+> 目标：复杂 Mongo 聚合与级联更新全部下沉 repository，Service 保持“参数装配 + 调用 + 轻度校验”。
 
 ### 🔌 API 架构
 
-- ✅ **RESTful API** - 标准的 HTTP JSON API
-- ✅ **gRPC 服务** - 高性能的二进制协议
-- ✅ **Swagger 文档** - 自动生成的 API 文档
-- ✅ **中间件支持** - 认证、日志、错误处理
-- ✅ **结构化日志** - 完整的请求追踪
+- REST (gorilla/mux) + gRPC(gateway) 同步暴露
+- Proto -> pb.go + gateway + swagger（`make proto-all`）
+- OpenAPI 文档：`docs/swagger/todoing.swagger.json`
+- 增强的分页 / 搜索 / 预览 / 调试输出
 
 ## 🏗️ 技术架构
 
-### 核心技术栈
-
-```
-📦 技术选型
-├── 🌐 Web 框架: Gorilla Mux
-├── 🗄️ 数据库: MongoDB + Official Driver
-├── 🔐 认证: JWT + Bcrypt
-├── 📡 RPC: gRPC + Protobuf
-├── 📚 文档: Swagger/OpenAPI
-├── 📧 邮件: Go-Mail
-├── 🎯 验证码: 自研图形验证码
-└── 🐳 部署: Docker + Docker Compose
+```text
+Handlers -> Services (薄) -> Repositories (Event/Reminder) -> Mongo
+                |-> Scheduler (Reminders)
+                |-> Unified Aggregator
+                |-> Notifications (SSE)
 ```
 
-### 项目结构
+关键点：
 
-```
-backend-go/
-├── 📁 cmd/                    # 应用程序入口
-│   ├── api/                   # HTTP API 服务器
-│   └── grpc/                  # gRPC 服务器
-├── 📁 internal/               # 内部代码
-│   ├── api/                   # HTTP 处理器
-│   ├── auth/                  # 认证服务
-│   ├── captcha/               # 验证码服务
-│   ├── config/                # 配置管理
-│   ├── email/                 # 邮件服务
-│   ├── models/                # 数据模型
-│   └── services/              # 业务逻辑
-├── 📁 api/proto/v1/           # Protobuf 定义
-├── 📁 docs/                   # API 文档
-├── 📁 tools/                  # 开发工具
-│   └── generate_complete_api.go # 文档生成器
-├── 📁 scripts/                # 构建脚本
-├── 🐳 Dockerfile             # 容器镜像
-├── 🔧 Makefile               # 构建配置
-└── 📦 go.mod                 # Go 模块定义
-```
+- Event/Reminder Service 已无直接 `bson` 依赖
+- 事件推进 `Advance`：更新事件 -> 异步重算相关提醒 -> 写系统 Comment
+- 提醒发送：Scheduler 使用仓储 `Pending()` + `MarkSent()`；支持 Snooze / Toggle / ImmediateTest / Preview
 
-## 🚀 快速开始
-
-### 📋 环境要求
-
-- **Go** 1.23 或更高版本
-- **MongoDB** 5.0 或更高版本
-- **Protocol Buffers** 编译器 (可选，用于 gRPC)
-
-### 🛠️ 开发环境搭建
-
-#### 1. 克隆并准备项目
-
-```bash
-# 克隆项目
-git clone https://github.com/axfinn/todoIngPlus.git
-cd todoIng/backend-go
-
-# 安装依赖
-make deps
-
-# 生成 API 文档
-make docs
-```
-
-#### 2. 配置环境变量
-
-```bash
-# 复制环境变量模板
-cp .env.example .env
-
-# 编辑配置文件
-vim .env
-```
-
-#### 3. 启动数据库
-
-```bash
-# 使用 Docker 启动 MongoDB
-cd .. && docker-compose -f docker-compose.dev.yml up mongodb -d
-
-# 或使用本地 MongoDB
-mongod --dbpath ./data/db
-```
-
-#### 4. 运行服务
-
-```bash
-# 方式1: 使用 Makefile
-make run
-
-# 方式2: 直接运行
-go run ./cmd/api/main.go
-
-# 方式3: 构建后运行
-make build && ./server
-```
-
-#### 5. 验证服务
-
-```bash
-# 健康检查
-curl http://localhost:5004/health
-
-# 查看 API 文档
-open http://localhost:5004/swagger/
-```
-
-### 🐳 Docker 部署
-
-> 📖 **详细的 Docker 使用指南**: 查看 [DOCKER.md](./DOCKER.md) 获取完整的镜像使用文档
-
-#### 快速启动 (使用官方镜像)
-
-```bash
-# 方式1: 直接运行官方镜像
-docker run -d \
-  --name todoing-go-backend \
-  -p 5004:5004 \
-  -e MONGO_URI="mongodb://admin:password@localhost:27017/todoing?authSource=admin" \
-  -e JWT_SECRET="your_super_secret_jwt_key" \
-  axiu/todoing-go:latest
-
-# 方式2: 使用完整的 Docker Compose (推荐)
-cd ../docker
-./deploy.sh golang up
-```
-
-#### 本地构建镜像
-
-```bash
-# 构建镜像
-docker build -t todoing-backend:local .
-
-# 或使用 Makefile
-make docker-build
-
-# 或使用 Docker Compose 本地构建
-cd ../docker
-./deploy.sh golang up --build
-```
-
-#### 镜像信息
-
-- **官方镜像**: `axiu/todoing-go:latest`
-- **支持架构**: `linux/amd64`, `linux/arm64`
-- **Docker Hub**: [axiu/todoing-go](https://hub.docker.com/r/axiu/todoing-go)
-- **自动更新**: 每次发布都会自动构建新镜像
-
-## 🔧 开发工具
-
-### Makefile 命令
-
-```bash
-# 📚 查看所有可用命令
-make help
-
-# 🏗️ 开发命令
-make deps              # 下载依赖
-make build             # 构建 HTTP 服务器
-make build-grpc        # 构建 gRPC 服务器
-make run               # 运行 HTTP 服务器
-make run-grpc          # 运行 gRPC 服务器
-
-# 📖 文档相关
-make docs              # 生成完整 API 文档
-make docs-dev          # 快速文档更新
-make docs-clean        # 清理文档文件
-make docs-serve        # 生成文档并启动服务
-
-# 🧪 测试相关
-make test              # 运行所有测试
-make test-unit         # 运行单元测试
-make test-coverage     # 生成覆盖率报告
-
-# 🔍 代码质量
-make fmt               # 格式化代码
-make lint              # 代码检查
-make vet               # 代码静态分析
-
-# 🐳 Docker 相关
-make docker-build      # 构建 Docker 镜像
-make docker-run        # 运行 Docker 容器
-
-# 🧹 清理命令
-make clean             # 清理构建文件
-make clean-proto       # 清理生成的 Proto 文件
-```
-
-### API 文档生成
-
-系统提供了强大的 API 文档自动生成功能：
-
-```bash
-# 生成完整 API 文档 (包含 REST + gRPC)
-make docs
-```
-
-#### 文档包含内容
-
-- **16个 REST API 接口**：完整的 HTTP 接口规范
-- **5个 gRPC API 接口**：Protobuf 定义的高性能接口
-- **26个数据模型**：详细的请求/响应类型定义
-- **完整示例**：每个接口都包含示例数据
-
-## 🔌 API 接口
-
-### REST API 端点
-
-#### 🔐 认证模块
-
-```
-POST   /api/auth/register           # 用户注册
-POST   /api/auth/login              # 用户登录  
-GET    /api/auth/me                 # 获取用户信息
-POST   /api/auth/send-email-code    # 发送注册验证码
-POST   /api/auth/send-login-email-code # 发送登录验证码
-GET    /api/auth/captcha            # 获取图形验证码
-POST   /api/auth/verify-captcha     # 验证图形验证码
-```
-
-#### 📋 任务管理
-
-```
-GET    /api/tasks                   # 获取任务列表
-POST   /api/tasks                   # 创建新任务
-GET    /api/tasks/{id}              # 获取任务详情
-PUT    /api/tasks/{id}              # 更新任务
-DELETE /api/tasks/{id}              # 删除任务
-GET    /api/tasks/export/all        # 导出所有任务
-POST   /api/tasks/import            # 批量导入任务
-```
-
-#### 📊 报表管理
-
-```
-GET    /api/reports                 # 获取报表列表
-POST   /api/reports/generate        # 生成新报表
-GET    /api/reports/{id}            # 获取报表详情
-DELETE /api/reports/{id}            # 删除报表
-POST   /api/reports/{id}/polish     # AI 润色报表
-GET    /api/reports/{id}/export/{format} # 导出报表 (pdf/excel/word)
-```
-
-### gRPC 服务
-
-#### 认证服务 (AuthService)
-
-```protobuf
-service AuthService {
-  rpc Login(AuthLoginRequest) returns (AuthLoginResponse);
-  rpc Register(AuthRegisterRequest) returns (AuthRegisterResponse);
-  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
-}
-```
-
-#### 任务服务 (TaskService)
-
-```protobuf
-service TaskService {
-  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
-  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
-}
-```
-
-#### 报表服务 (ReportService)
-
-```protobuf
-service ReportService {
-  rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse);
-}
-```
-
-#### 验证码服务 (CaptchaService)
-
-```protobuf
-service CaptchaService {
-  rpc GenerateCaptcha(GenerateCaptchaRequest) returns (GenerateCaptchaResponse);
-  rpc VerifyCaptcha(VerifyCaptchaRequest) returns (VerifyCaptchaResponse);
-}
-```
-
-## ⚙️ 配置管理
-
-### 环境变量
-
-```bash
-# 🗄️ 数据库配置
-MONGODB_URI=mongodb://localhost:27017/todoing
-DB_NAME=todoing
-
-# 🔐 JWT 认证配置
-JWT_SECRET=your-super-secret-jwt-key
-JWT_EXPIRES_IN=168h  # 7 天
-
-# 📧 邮件服务配置
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-
-# 🤖 OpenAI 配置 (AI 润色功能)
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-3.5-turbo
-
-# 🌐 服务配置
-HTTP_PORT=5004          # HTTP 服务端口
-GRPC_PORT=9000         # gRPC 服务端口
-LOG_LEVEL=info         # 日志级别
-
-# 🔧 功能开关
-ENABLE_CAPTCHA=true              # 启用图形验证码
-ENABLE_EMAIL_VERIFICATION=true  # 启用邮箱验证
-DISABLE_REGISTRATION=false      # 禁用注册功能
-DEBUG_MODE=false               # 调试模式
-```
-
-### 功能开关说明
-
-| 环境变量 | 类型 | 默认值 | 说明 |
-|----------|------|--------|------|
-| `ENABLE_CAPTCHA` | boolean | `false` | 启用图形验证码功能 |
-| `ENABLE_EMAIL_VERIFICATION` | boolean | `false` | 启用邮箱验证码功能 |
-| `DISABLE_REGISTRATION` | boolean | `false` | 禁用用户注册功能 |
-| `DEBUG_MODE` | boolean | `false` | 启用详细调试日志 |
-| `CORS_ENABLED` | boolean | `true` | 启用跨域请求支持 |
-
-## 🧪 测试
-
-### 运行测试
-
-```bash
-# 运行所有测试
-make test
-
-# 运行单元测试
-make test-unit
-
-# 运行转换层测试
-make test-convert
-
-# 生成覆盖率报告
-make test-coverage
-```
-
-### API 测试示例
-
-```bash
-# 1. 健康检查
-curl http://localhost:5004/health
-
-# 2. 获取验证码
-curl http://localhost:5004/api/auth/captcha
-
-# 3. 用户注册
-curl -X POST http://localhost:5004/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "123456",
-    "nickname": "测试用户",
-    "emailCode": "123456",
-    "emailCodeId": "code-id-123"
-  }'
-
-# 4. 用户登录
-curl -X POST http://localhost:5004/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "123456"
-  }'
-
-# 5. 创建任务 (需要 JWT Token)
-curl -X POST http://localhost:5004/api/tasks \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{
-    "title": "完成项目文档",
-    "description": "编写详细的API文档",
-    "priority": "high",
-    "dueDate": "2024-12-31T23:59:59Z"
-  }'
-```
-
-### 🔄 Proto & OpenAPI 统一生成（新增）
-
-> 当前已迁移到以 Protobuf 为单一真实来源 (Single Source of Truth)。HTTP(gRPC-Gateway) 与 OpenAPI 文档均由 *.proto 自动生成。旧的 tools/generate_complete_api.go 仍可用，但已标记为 Deprecated。
-
-常用命令：
-
-```bash
-# 仅生成 Go gRPC / Gateway 代码
-make proto
-
-# 仅生成 OpenAPI (Swagger JSON) -> docs/swagger/todoing.swagger.json
-make openapi
-
-# 一次性生成（推荐在修改 proto 后）
-make proto-all
-
-# 生成 OpenAPI 并列出 swagger 目录内容
-make docs-openapi
-```
-
-变更流程建议：
-
-1. 修改或新增 proto (位于 api/proto/v1)
-2. 运行 `make proto-all`
-3. 查看 `docs/swagger/todoing.swagger.json`
-4. 如需提交：同时提交 *.proto、生成的 pkg/api/v1/*.pb.go、docs/swagger/todoing.swagger.json
-
-目录说明：
+## 📂 项目结构（节选）
 
 ```text
-api/proto/v1/*.proto               # 接口定义（唯一真实来源）
-pkg/api/v1/*.pb.go                 # gRPC & HTTP(Gateway) 生成代码
-docs/swagger/todoing.swagger.json  # 聚合的 OpenAPI 文档
+backend-go/
+  cmd/api / cmd/grpc          # 启动入口
+  internal/
+    api/                      # HTTP handlers
+    services/                 # 薄业务 + unified + scheduler
+    repository/               # Event / Reminder 仓储实现
+    models/                   # 领域模型 + 计算逻辑
+    notifications/            # SSE Hub
+    email/                    # 邮件发送封装
+    observability/            # 日志
+  api/proto/v1/               # *.proto (SSOT)
+  pkg/api/v1/                 # 生成的 gRPC + Gateway 代码
+  docs/swagger/               # OpenAPI 输出
 ```
 
-常见问题：
+## ⏰ 提醒系统快速参考
 
-- 编辑器里 proto 显示 import not found (如 common.proto)：属于本地 linter 未加 include path，执行 `make proto` 若成功即可忽略。
-- 未使用的 import 警告：保持最小化 import；确需引用再添加。当前 dashboard.proto 已移除未使用的 timestamp。
-- OpenAPI 字段命名：已使用 `json_names_for_fields=false` 以保持与 proto 字段一致；前端可直接对接。
+| 能力 | 路径 | 说明 |
+|------|------|------|
+| 创建 | POST /api/reminders | advance_days + reminder_times |
+| 预览 | POST /api/reminders/preview | 不落库，返回 next_send / 文本 |
+| 测试 | POST /api/reminders/test | 立即或延迟创建 + 可即时邮件 |
+| 即将到来 | GET /api/reminders/upcoming?hours=48 | 未来窗口 |
+| 简化列表 | GET /api/reminders/simple | 精简字段，快速渲染 |
+| Snooze | POST /api/reminders/{id}/snooze | 推迟 N 分钟 |
+| Toggle | POST /api/reminders/{id}/toggle_active | 启用 / 停用 |
 
-后续计划：
+## 🔗 统一聚合 (Unified)
 
-- 移除或存档 legacy 文档生成器 (tools/generate_complete_api.go)
-- 引入 CI 检查：proto 变动必须伴随生成文件 & OpenAPI 变更
-- 增补注释 (proto 注释将自动进入 OpenAPI description)
+| 路径 | 说明 |
+|------|------|
+| GET /api/unified/upcoming | 聚合任务/事件/提醒；支持 ?sources=task,event,reminder&limit=50 |
+| GET /api/unified/calendar | 按日合并 (任务有日期 / 事件 / 提醒下一次发送) |
+| Debug (context flag) | 设置 unifiedDebug 返回内部窗口统计 |
 
-如需重新生成并验证：
+## 📈 索引建议
 
-```bash
-make clean-proto && make proto-all && grep -n 'DashboardService' docs/swagger/todoing.swagger.json
+```text
+reminders: { is_active:1, next_send:1 }
+events:    { user_id:1, event_date:1, is_active:1 }
 ```
 
----
+## ♻️ 已更新内容概览
 
-## 📊 性能指标
+| 主题 | 状态 | 说明 |
+|------|------|------|
+| Event / Reminder Repository 重构 | ✔ | 复杂逻辑下沉 + Service 薄化 |
+| Reminder Preview / Test | ✔ | Preview 不落库；Test 支持即时邮件 |
+| Unified Debug 输出 | ✔ | 返回窗口过滤与统计信息 |
+| Proto -> OpenAPI | ✔ | make proto-all 一键生成 |
+| 事件推进级联提醒重算 | ✔ | Advance 异步重算相关提醒 next_send |
+| gRPC 服务器 | ✔ | 与 HTTP 共享 Service / Repository |
 
-### 系统性能
+## 版权 & License
 
-- **启动时间**: < 3 秒
-- **API 响应时间**: 平均 < 100ms
-- **内存占用**: < 50MB (空载)
-- **并发处理**: 1000+ 请求/秒
-- **gRPC 性能**: 比 REST API 快 30-50%
+详见根目录 `LICENSE`。若该文档与实际实现不符，请以代码为准并提交 Issue。
 
-### 基准测试
-
-```bash
-# HTTP API 压力测试
-ab -n 10000 -c 100 http://localhost:5004/health
-
-# gRPC 性能测试 (需要 ghz 工具)
-ghz --insecure --proto ./api/proto/v1/auth.proto \
-    --call AuthService.Login \
-    -d '{"email":"test@example.com","password":"123456"}' \
-    localhost:9000
-```
-
-## 🚀 生产部署
-
-### Docker 部署
-
-```bash
-# 构建生产镜像
-docker build -t todoing-backend:prod -f Dockerfile .
-
-# 运行容器
-docker run -d \
-  --name todoing-backend \
-  -p 5004:5004 \
-  -e MONGODB_URI=mongodb://mongo:27017/todoing \
-  todoing-backend:prod
-```
-
-### Kubernetes 部署
-
-```yaml
-# k8s-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: todoing-backend
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: todoing-backend
-  template:
-    metadata:
-      labels:
-        app: todoing-backend
-    spec:
-      containers:
-      - name: backend
-        image: todoing-backend:prod
-        ports:
-        - containerPort: 5004
-        env:
-        - name: MONGODB_URI
-          value: "mongodb://mongo-service:27017/todoing"
-```
-
-### 云平台部署建议
-
-- **AWS**: ECS + RDS DocumentDB
-- **Google Cloud**: Cloud Run + Firestore
-- **Azure**: Container Instances + Cosmos DB
-- **阿里云**: ACK + MongoDB Atlas
-
-## 🔍 监控和日志
-
-### 结构化日志
-
-系统使用结构化日志记录，便于分析和监控：
-
-```json
-{
-  "timestamp": "2024-08-10T12:00:00Z",
-  "level": "info",
-  "service": "todoing-backend",
-  "method": "POST",
-  "path": "/api/tasks",
-  "status": 201,
-  "duration": "45ms",
-  "user_id": "user123",
-  "request_id": "req-abc123"
-}
-```
-
-### 健康检查端点
-
-```bash
-# 基础健康检查
-GET /health
-
-# 详细健康状态
-GET /health/detailed
-
-# 数据库连接状态
-GET /health/db
-```
-
-## 🤝 贡献指南
-
-### 开发流程
-
-1. **Fork 项目** 并创建功能分支
-2. **遵循代码规范**: `gofmt`, `golint`, `go vet`
-3. **编写测试** 确保代码覆盖率 > 80%
-4. **更新文档** 包括 API 变更
-5. **提交 PR** 并等待 Review
-
-### 代码规范
-
-```bash
-# 格式化代码
-make fmt
-
-# 静态检查
-make vet
-
-# 代码规范检查
-make lint
-
-# 运行所有检查
-make fmt vet lint test
-```
-
-## 📝 更新日志
-
-查看 [CHANGELOG.md](./CHANGELOG.md) 了解详细的版本更新历史。
-
-## 🔗 相关链接
-
-- **项目主页**: https://github.com/axfinn/todoIngPlus
-- **API 文档**: http://localhost:5004/swagger/
-- **问题反馈**: https://github.com/axfinn/todoIngPlus/issues
-- **gRPC 文档**: [Proto 文件](./api/proto/v1/)
-
-## 📄 许可证
-
-本项目采用 [MIT 许可证](../LICENSE)。
-
----
-
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给我们一个 Star！**
-
-Made with ❤️ in Go | [返回主项目](../)
-
-</div>
+> 最后更新：Repository / Preview / Unified 重构同步版
 

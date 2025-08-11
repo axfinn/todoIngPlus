@@ -1,5 +1,6 @@
-## TodoIng Plus v0.0.1
-# TodoIng Plus v0.0.1
+# TodoIng Plus v0.0.2
+
+<!-- v0.0.2: 引入 Repository 层 (Event/Reminder) + Reminder Preview & Immediate Test + Unified 聚合改造，详见 CHANGELOG.md -->
 
 ![Dashboard](./img/dashboard.png)
 

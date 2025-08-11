@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 )
 
 // TaskSortService 任务排序服务
@@ -260,7 +261,7 @@ func (s *TaskSortService) GetDashboardData(ctx context.Context, userID primitive
 		var res result
 
 		// 获取即将到来的事件（7天内）
-		eventService := NewEventService(s.db)
+		eventService := NewEventService(repository.NewEventRepository(s.db))
 		res.upcomingEvents, res.err = eventService.GetUpcomingEvents(ctx, userID, 7)
 		if res.err != nil {
 			resultChan <- res
@@ -275,7 +276,7 @@ func (s *TaskSortService) GetDashboardData(ctx context.Context, userID primitive
 		}
 
 		// 获取待处理的提醒
-		reminderService := NewReminderService(s.db)
+		reminderService := NewReminderService(repository.NewReminderRepository(s.db))
 		res.pendingReminders, res.err = reminderService.GetUpcomingReminders(ctx, userID, 24)
 		if res.err != nil {
 			resultChan <- res

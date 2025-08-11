@@ -6,13 +6,13 @@ import (
 	"log"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-
 	"github.com/axfinn/todoIngPlus/backend-go/internal/email"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 	nHub "github.com/axfinn/todoIngPlus/backend-go/internal/notifications"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // ReminderScheduler 提醒调度器
@@ -25,14 +25,18 @@ type ReminderScheduler struct {
 	running         bool
 	notificationSvc *NotificationService
 	hub             *nHub.Hub
+	eventRepo       repository.EventRepository
 }
 
 // NewReminderScheduler 创建提醒调度器
 func NewReminderScheduler(db *mongo.Database, hub *nHub.Hub) *ReminderScheduler {
+	eventRepo := repository.NewEventRepository(db)
+	reminderRepo := repository.NewReminderRepository(db)
 	return &ReminderScheduler{
 		db:              db,
-		reminderService: NewReminderService(db),
-		eventService:    NewEventService(db),
+		reminderService: NewReminderService(reminderRepo),
+		eventService:    NewEventService(eventRepo),
+		eventRepo:       eventRepo,
 		stopChan:        make(chan bool),
 		running:         false,
 		notificationSvc: NewNotificationService(db),
@@ -91,19 +95,12 @@ func (s *ReminderScheduler) checkAndSendReminders() {
 
 	// 1) 事件到点系统时间线记录（精度: 分钟）
 	now := time.Now()
-	// 仅处理当前分钟内新达到的事件 (EventDate 在 [now-1m, now]) 且未记录过 last_triggered_at
-	eventsColl := s.db.Collection("events")
-	filter := bson.M{"is_active": true, "event_date": bson.M{"$gte": now.Add(-1 * time.Minute), "$lte": now}}
-	cur, errEv := eventsColl.Find(ctx, filter)
+	from := now.Add(-1 * time.Minute)
+	to := now
+	events, errEv := s.eventRepo.ListStartingWindow(ctx, from, to)
 	if errEv == nil {
-		defer cur.Close(ctx)
 		ecs := NewEventCommentService(s.db)
-		for cur.Next(ctx) {
-			var ev models.Event
-			if err := cur.Decode(&ev); err != nil {
-				continue
-			}
-			// 检查是否已记录 (last_triggered_at 距离本次 < 55s 判定已写)
+		for _, ev := range events {
 			if ev.LastTriggeredAt != nil && now.Sub(*ev.LastTriggeredAt) < 55*time.Second {
 				continue
 			}
@@ -115,8 +112,7 @@ func (s *ReminderScheduler) checkAndSendReminders() {
 				n := models.Notification{UserID: ev.UserID, Type: "timeline_event", Message: content, CreatedAt: time.Now(), EventID: &ev.ID, Metadata: map[string]interface{}{"comment_id": c.ID.Hex(), "kind": "event_start"}}
 				s.hub.Broadcast(n)
 			}
-			// 更新 last_triggered_at
-			_, _ = eventsColl.UpdateByID(ctx, ev.ID, bson.M{"$set": bson.M{"last_triggered_at": now}})
+			_ = s.eventRepo.MarkTriggered(ctx, ev.ID, now)
 		}
 	}
 

@@ -1,136 +1,80 @@
-# TodoIng 技术架构（当前实现版）
+# TodoIng 技术架构（更新：Repository + Preview/Test + Proto SSOT）
 
-> 本文件已重写以与实际代码保持一致；旧版中提到的微服务、WebSocket、repository 深层分层、Redis、OpenAI、Zap、Viper 等尚未实现或已移除。更完整叙述参见：`architecture.md`、`database-design.md`、`reminder-module.md`。
+> 本文件已再次同步当前 dev：引入 Event / Reminder Repository、提醒 Preview & Immediate Test、事件推进级联、统一聚合 Debug。旧内容中有关“无 repository 层”描述已修订。
 
-## 总览
+## 1. 当前形态
 
-当前形态：单体 Go HTTP API + React 前端 + MongoDB。
+- 单体 Go API (REST + gRPC Gateway) + React 前端 + MongoDB
+- 事件 & 提醒采用 Repository 下沉复杂逻辑；其余领域逐步迁移
+- Proto 为接口单一真实来源（生成 gRPC + Gateway + OpenAPI）
 
-- 后端：Go 1.23，`gorilla/mux` 路由，中间件 (Logging / Recover / Auth)；SSE 用于实时通知。
-- 前端：React + TS + Redux Toolkit + Vite；使用 EventSource 订阅通知。
-- 数据库：MongoDB（集合：users, tasks, events, reminders, reports, notifications）。
-- 调度：内部 `time.Ticker` 每分钟扫描 reminders。
-- 认证：JWT + 可选图片验证码 + 邮箱验证码。
-- 邮件：通用 `EMAIL_*` + 可选 `REMINDER_EMAIL_*` 覆盖。
-
-## 组件关系（简化）
+## 2. 更新后的后端结构
 
 ```text
-[ React (Vite) ] -- REST --> [ Go API (mux) ] -- Mongo Driver --> [ MongoDB ]
-        |                             |
-        '---- SSE (EventSource)  <-----'
+internal/
+  api/            # Handlers (auth, tasks, events, reminders, unified, reports, notifications, dashboard)
+  services/       # 薄服务：EventService/ReminderService 调用仓储；Unified 聚合；Scheduler
+  repository/     # EventRepository / ReminderRepository
+  models/         # 数据模型 + 计算 (CalculateNextSendTime / GetNextOccurrence)
+  notifications/  # SSE Hub
+  email/          # 邮件发送封装
+  observability/  # 日志
 ```
 
-## 后端目录实际结构
+## 3. Repository 特性
 
-```text
-cmd/api/main.go          # 入口
-internal/api             # 处理器 (auth/tasks/events/reminders/unified/notifications/...)
-internal/auth            # JWT / token 解析
-internal/captcha         # 图片验证码
-internal/email           # 邮件发送 & 覆盖逻辑
-internal/notifications   # SSE hub
-internal/services        # 组合 / 聚合逻辑 (unified, dashboard, reminder scheduler helper)
-internal/models          # 数据模型
-internal/observability   # 日志（轻量封装）
-```
-
-(旧文档的 `handler/service/repository` 典型分层与 `cmd/server` 入口已废弃。)
-
-## 核心模块说明
-
-| 模块 | 关键文件 | 说明 |
+| 仓储 | 关键方法 | 说明 |
 |------|----------|------|
-| 认证 & 用户初始化 | `internal/api/auth_handlers.go` / `internal/auth/jwt.go` | 登录/注册/验证码，缺用户时创建默认账户 |
-| 任务 & 事件 | `internal/api/tasks_handlers.go` / `internal/api/event_routes.go` | 基础 CRUD |
-| 提醒系统 | `internal/api/reminder_handlers.go` | 创建/列出/测试；scheduler 周期扫描发送 |
-| 调度逻辑 | scheduler（main 中初始化） | `next_send` 条件查询并更新 |
-| 通知 (SSE) | `internal/api/notification_handlers.go` + `internal/notifications` | 服务器推事件，前端 EventSource 接收 |
-| 统一聚合 | `internal/api/unified_handlers.go` + `internal/services/unified_service.go` | upcoming + calendar 聚合多个源 |
-| 仪表盘 | `internal/api/dashboard_handlers.go` | 汇总统计 |
-| 邮件发送 | `internal/email/email.go` | 验证码 & 通知邮件，支持双配置组 |
+| EventRepository | Advance / ListUpcoming / CalendarRange / Search / ListStartingWindow / MarkTriggered | 推进+级联重算提醒+写系统时间线 |
+| ReminderRepository | Preview / CreateImmediateTest / Pending / Upcoming / Snooze / ToggleActive / MarkSent | 预览不落库 + 测试提醒即时发送支持 |
 
-## 与旧架构文档差异对照
+## 4. 提醒扩展
 
-| 旧描述 | 现状 | 说明 |
-|--------|------|------|
-| WebSocket 实时 | 使用 SSE | `EventSource` 简化，无自定义协议握手需求 |
-| repository 层 | 省略 | 直接 Mongo 调用 + 轻量 services |
-| Redis 缓存 | 未实现 | 后续如需会在高频查询/排行榜加入 |
-| OpenAI 集成功能 | 未实现 | 移除示例配置，规划阶段 |
-| Zap / Viper | 未使用 | 自定义轻量日志 & 直接 `os.Getenv` |
-| Rate limiting | 未实现 | 可后续在中间件补充 |
-| WebSocket 离线队列 | 未实现 | SSE 不做离线；将来可用消息队列/Redis PubSub |
-| gRPC 微服务通信 | 备用入口存在 | 非主路径；当前单体充分 |
+- Preview: 计算下一次发送 (advance_days + reminder_times) → 返回文本与时间
+- Immediate Test: 直接插入 reminder + 允许立刻邮件尝试
+- Scheduler: 1m ticker → Pending() → 发送 → MarkSent() → 重算 next_send
 
-## 数据模型（摘录）
+## 5. 统一聚合改进
 
-> 全量详见 `database-design.md`。
+- Upcoming：新增 debug 模式，返回窗口过滤器与统计计数
+- Calendar：聚合 events + reminders(next_send) + tasks(有日期)
 
-```go
-// Reminder 关键字段
-type Reminder struct {
-    ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-    EventID    *primitive.ObjectID `bson:"event_id,omitempty" json:"event_id,omitempty"`
-    UserID     primitive.ObjectID  `bson:"user_id" json:"user_id"`
-    Title      string              `bson:"title" json:"title"`
-    ReminderType string            `bson:"reminder_type" json:"reminder_type"`
-    NextSend   *time.Time          `bson:"next_send" json:"next_send"`
-    IsActive   bool                `bson:"is_active" json:"is_active"`
-    CreatedAt  time.Time           `bson:"created_at" json:"created_at"`
-    UpdatedAt  time.Time           `bson:"updated_at" json:"updated_at"`
-}
+## 6. 事件推进流程 (Advance)
+
+1. 读取事件 → 判断 recurrence_type
+2. 计算下一日期或关闭 (is_active=false)
+3. 更新事件 + 写系统时间线 (event_comments)
+4. 异步遍历相关 reminders：重算 next_send（仅相对事件型）
+
+## 7. Proto 驱动 API
+
+```bash
+make proto-all   # 生成 pb + gateway + swagger
 ```
 
-## 通知机制 (SSE)
+输出：`pkg/api/v1/*` + `docs/swagger/todoing.swagger.json`
 
-- 前端：`EventSource('/api/notifications/stream?token=JWT')`
-- 服务端：保持长连接，定期/事件触发写入 `event: notification\ndata: {...}\n\n`
-- 响应头：`Content-Type: text/event-stream`, `Cache-Control: no-cache`
-- 中间件确保 `Flush()` 可用
+## 8. 未迁移领域（后续）
 
-## 提醒调度流程
-
-1. Ticker 触发扫描：`is_active=true AND next_send <= now`
-2. 生成邮件 / SSE 通知
-3. 更新 reminder：`last_sent` & 计算下一个 `next_send`
-4. 测试提醒：临时事件，不持久化主事件集合
-
-## 聚合 (Unified) 简述
-
-- upcoming：聚合 tasks/events/reminders 未来窗口内条目，按时间排序
-- calendar：按日 bucket，支持源过滤与数量限制
-- `debug=1` 返回窗口参数与范围
-
-## 安全要点
-
-| 方面 | 当前实现 |
-|------|----------|
-| 认证 | JWT (HS256) |
-| 验证码 | 图片 + 邮箱（可开关） |
-| 授权 | 用户资源隔离：查询按 `user_id` 过滤 |
-| 速率限制 | 未实现 |
-| RBAC | 暂无复杂角色；默认用户为 admin 用于初始管理 |
-
-## 性能与扩展计划（Roadmap）
-
-| 项目 | 状态 | 计划 |
+| 领域 | 状态 | 计划 |
 |------|------|------|
-| Reminder 扫描效率 | 基础 | 添加索引 (`is_active`, `next_send`) 已在设计中 |
-| SSE 横向扩展 | 待做 | 借助 Redis Pub/Sub 或内存分片广播 |
-| 缓存层 (Redis) | 待做 | 统一聚合结果短期缓存 |
-| 指标监控 | 待做 | 暴露 `/metrics` Prometheus 指标 |
-| Rate Limiting | 待做 | Token 桶中间件 |
-| 任务/事件高级搜索 | 规划 | 建立文本索引/ES 集成 |
+| Tasks | 直接 Mongo | 引入 TaskRepository（排序与筛选聚合） |
+| Reports | 直接 Mongo | 导出/统计逻辑下沉 repository |
+| Notifications | 直接 Mongo | 简单写入保留 |
 
-## 文件引用
+## 9. 指标 & 优化计划
 
-- 架构：`docs/architecture.md`
-- 数据库：`docs/database-design.md`
-- 配置：`docs/configuration.md`
-- 提醒：`docs/reminder-module.md`
-- 统一聚合：源代码 `internal/api/unified_handlers.go`
+- 建议索引：`reminders(is_active,next_send)` / `events(user_id,event_date,is_active)`
+- 计划：Prometheus 指标 + repository instrumentation + 缓存 upcoming 结果
+
+## 10. 后续 Roadmap 摘要
+
+- UserRepository (统一邮箱获取 / 用户查询)
+- 复杂循环 (weekly pattern, monthly day rules, exclusion dates)
+- Reminder 批量重算管道 (事件批量编辑)
+- SSE -> WebSocket 可插拔
+- Metrics / Tracing / Rate Limiter 中间件
 
 ---
 
-本文件旨在取代旧版 `technical-architecture.md` 过时内容，随实现演进更新。
+最后更新：同步仓储/预览/统一聚合调试版本

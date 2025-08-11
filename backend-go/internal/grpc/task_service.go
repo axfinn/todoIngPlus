@@ -7,6 +7,7 @@ import (
 
 	"github.com/axfinn/todoIngPlus/backend-go/internal/convert"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 	pb "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,7 +25,7 @@ type TaskServiceServer struct {
 }
 
 func NewTaskServiceServer(db *mongo.Database) *TaskServiceServer {
-	return &TaskServiceServer{core: services.NewTaskService(db), db: db}
+	return &TaskServiceServer{core: services.NewTaskService(repository.NewTaskRepository(db)), db: db}
 }
 
 // helper 保留

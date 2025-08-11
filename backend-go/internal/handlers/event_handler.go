@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 )
 
@@ -24,10 +25,7 @@ type EventHandler struct {
 
 // NewEventHandler 创建事件处理器
 func NewEventHandler(db *mongo.Database) *EventHandler {
-	return &EventHandler{
-		eventService: services.NewEventService(db),
-		db:           db,
-	}
+	return &EventHandler{eventService: services.NewEventService(repository.NewEventRepository(db)), db: db}
 }
 
 // CreateEvent 创建事件

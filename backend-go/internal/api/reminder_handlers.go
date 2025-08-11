@@ -14,6 +14,7 @@ import (
 
 	"github.com/axfinn/todoIngPlus/backend-go/internal/email"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/observability"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -121,7 +122,7 @@ func (d *ReminderDeps) CreateReminder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reminderService := services.NewReminderService(d.DB)
+	reminderService := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	reminder, err := reminderService.CreateReminder(context.Background(), objectID, req)
 	if err != nil {
 		if err.Error() == "event not found" {
@@ -168,7 +169,7 @@ func (d *ReminderDeps) GetReminder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reminderService := services.NewReminderService(d.DB)
+	reminderService := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	reminder, err := reminderService.GetReminder(context.Background(), objectID, reminderID)
 	if err != nil {
 		if err.Error() == "reminder not found" {
@@ -211,7 +212,7 @@ func (d *ReminderDeps) UpdateReminder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reminderService := services.NewReminderService(d.DB)
+	reminderService := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	reminder, err := reminderService.UpdateReminder(context.Background(), objectID, reminderID, req)
 	if err != nil {
 		if err.Error() == "reminder not found" {
@@ -248,7 +249,7 @@ func (d *ReminderDeps) DeleteReminder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reminderService := services.NewReminderService(d.DB)
+	reminderService := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	err = reminderService.DeleteReminder(context.Background(), objectID, reminderID)
 	if err != nil {
 		if err.Error() == "reminder not found" {
@@ -295,7 +296,7 @@ func (d *ReminderDeps) ListReminders(w http.ResponseWriter, r *http.Request) {
 
 	activeOnly := query.Get("active_only") == "true"
 
-	reminderService := services.NewReminderService(d.DB)
+	reminderService := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	response, err := reminderService.ListReminders(context.Background(), objectID, page, pageSize, activeOnly)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to list reminders: %v", err), http.StatusInternalServerError)
@@ -325,7 +326,7 @@ func (d *ReminderDeps) ListRemindersSimple(w http.ResponseWriter, r *http.Reques
 			limit = v
 		}
 	}
-	svc := services.NewReminderService(d.DB)
+	svc := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	list, err := svc.ListSimpleReminders(r.Context(), objectID, activeOnly, limit)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to list simple reminders: %v", err), http.StatusInternalServerError)
@@ -353,7 +354,7 @@ func (d *ReminderDeps) ToggleReminderActive(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Invalid reminder ID", http.StatusBadRequest)
 		return
 	}
-	svc := services.NewReminderService(d.DB)
+	svc := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	newVal, err := svc.ToggleReminderActive(r.Context(), objectID, rid)
 	if err != nil {
 		if err.Error() == "reminder not found" {
@@ -394,7 +395,7 @@ func (d *ReminderDeps) PreviewReminder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid event_id", http.StatusBadRequest)
 		return
 	}
-	svc := services.NewReminderService(d.DB)
+	svc := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	preview, err := svc.PreviewReminder(r.Context(), uid, eid, body.AdvanceDays, body.ReminderTimes)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to preview: %v", err), http.StatusInternalServerError)
@@ -425,7 +426,7 @@ func (d *ReminderDeps) GetUpcomingReminders(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	reminderService := services.NewReminderService(d.DB)
+	reminderService := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	reminders, err := reminderService.GetUpcomingReminders(context.Background(), objectID, hours)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get upcoming reminders: %v", err), http.StatusInternalServerError)
@@ -475,7 +476,7 @@ func (d *ReminderDeps) SnoozeReminder(w http.ResponseWriter, r *http.Request) {
 		req.SnoozeMinutes = 60
 	}
 
-	reminderService := services.NewReminderService(d.DB)
+	reminderService := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	if err := reminderService.SnoozeReminder(context.Background(), objectID, reminderID, req.SnoozeMinutes); err != nil {
 		if err.Error() == "reminder not found" {
 			writeErr(http.StatusNotFound, "reminder_not_found", "Reminder not found")
@@ -543,7 +544,7 @@ func (d *ReminderDeps) CreateTestReminder(w http.ResponseWriter, r *http.Request
 			eventID = oid
 		}
 	}
-	svc := services.NewReminderService(d.DB)
+	svc := services.NewReminderService(repository.NewReminderRepository(d.DB))
 	if eventID.IsZero() {
 		// 找一个最近未来事件
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)

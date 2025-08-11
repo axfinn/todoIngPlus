@@ -6,6 +6,7 @@ import (
 
 	"github.com/axfinn/todoIngPlus/backend-go/internal/convert"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 	pb "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,8 +21,9 @@ type ReminderServiceServer struct {
 	core *services.ReminderService
 }
 
-func NewReminderServiceServer(db *mongo.Database) *ReminderServiceServer {
-	return &ReminderServiceServer{core: services.NewReminderService(db)}
+func NewReminderServiceServer(db *mongo.Database) *ReminderServiceServer { // 保留签名
+	repo := repository.NewReminderRepository(db)
+	return &ReminderServiceServer{core: services.NewReminderService(repo)}
 }
 
 // CreateReminder
@@ -266,8 +268,8 @@ func (s *ReminderServiceServer) PreviewReminder(ctx context.Context, req *pb.Pre
 		return nil, status.Errorf(codes.Internal, "preview reminder err: %v", err)
 	}
 	items := []*pb.PreviewReminderItem{}
-	if res.NextSend != nil {
-		items = append(items, &pb.PreviewReminderItem{ReminderAt: timestamppb.New(*res.NextSend), Message: res.ScheduleText})
+	if res.Next != nil {
+		items = append(items, &pb.PreviewReminderItem{ReminderAt: timestamppb.New(*res.Next), Message: res.Text})
 	}
 	return &pb.PreviewReminderResponse{Response: &pb.Response{Code: 200, Message: "ok"}, Schedule: items}, nil
 }

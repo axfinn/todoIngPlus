@@ -6,6 +6,7 @@ import (
 
 	"github.com/axfinn/todoIngPlus/backend-go/internal/convert"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 	pb "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,8 +21,9 @@ type EventServiceServer struct {
 	core *services.EventService
 }
 
-func NewEventServiceServer(db *mongo.Database) *EventServiceServer {
-	return &EventServiceServer{core: services.NewEventService(db)}
+func NewEventServiceServer(db *mongo.Database) *EventServiceServer { // 保留签名兼容现有调用
+	repo := repository.NewEventRepository(db)
+	return &EventServiceServer{core: services.NewEventService(repo)}
 }
 
 // CreateEvent
