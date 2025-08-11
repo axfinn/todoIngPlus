@@ -41,11 +41,13 @@ TodoIng Docker Compose 工具
   --remove           down 时删除卷 (-v)
   --no-detach        前台运行 (默认后台)
   --follow           logs 时跟随 (-f)
+  --port <port>      覆盖主对外 HTTP 端口 (默认 80)，例如: --port 2001
 
 示例:
   $0 golang up --build
   $0 dev up --profile golang
   $0 prod up --profile replica
+  $0 golang up --port 2001  # 之后访问 http://localhost:2001
   $0 golang logs backend-golang --follow
 EOF
 }
@@ -89,15 +91,15 @@ check_docker() {
 # 执行 docker-compose 命令
 execute_compose() {
   local file=$1 op=$2; shift 2; local args=("$@")
-  print_message $BLUE "执行: docker-compose -f $file $op ${args[*]}"
-  docker-compose -f "$file" "$op" "${args[@]}"
+  print_message $BLUE "执行: HOST_HTTP_PORT=${HOST_HTTP_PORT:-80} docker-compose -f $file $op ${args[*]}"
+  HOST_HTTP_PORT=${HOST_HTTP_PORT:-80} docker-compose -f "$file" "$op" "${args[@]}"
 }
 
 # 主函数
 main() {
   [ $# -lt 2 ] && show_help && exit 1
   local scheme=$1 op=$2; shift 2
-  local profile="" detach_flag="-d" build_flag="" remove_flag="" follow_flag="" compose_extra=()
+  local profile="" detach_flag="-d" build_flag="" remove_flag="" follow_flag="" compose_extra=() host_port=""
   while [[ $# -gt 0 ]]; do
     case $1 in
       --profile) profile=$2; shift 2 ;;
@@ -105,10 +107,17 @@ main() {
       --remove) remove_flag="-v"; shift ;;
       --no-detach) detach_flag=""; shift ;;
       --follow) follow_flag="-f"; shift ;;
+      --port) host_port=$2; shift 2 ;;
       -h|--help) show_help; exit 0 ;;
       *) compose_extra+=("$1"); shift ;;
     esac
   done
+  if [[ -n "$host_port" ]]; then
+    if [[ ! $host_port =~ ^[0-9]+$ ]] || (( host_port < 1 || host_port > 65535 )); then
+      print_message $RED "无效端口: $host_port"; exit 1
+    fi
+    export HOST_HTTP_PORT=$host_port
+  fi
   check_docker; check_env_file
   local file; file=$(get_compose_file "$scheme")
   local cmd_args=()
@@ -116,11 +125,11 @@ main() {
   case $op in
     up)
       cmd_args+=("$detach_flag"); [ -n "$build_flag" ] && cmd_args+=("$build_flag"); cmd_args+=("${compose_extra[@]}")
-      print_message $GREEN "启动 $scheme ..."; execute_compose "$file" up "${cmd_args[@]}"; print_message $GREEN "完成"
+      print_message $GREEN "启动 $scheme (HTTP 端口: ${HOST_HTTP_PORT:-80}) ..."; execute_compose "$file" up "${cmd_args[@]}"; print_message $GREEN "完成"
       case $scheme in
-        golang) print_message $BLUE "API: http://localhost:5004/api  Swagger: http://localhost:5004/swagger/" ;;
-        dev)    print_message $BLUE "前端: http://localhost:3000  MongoExpress: http://localhost:8081" ;;
-        prod)   print_message $BLUE "前端: http://localhost/  Grafana: http://localhost:3001" ;;
+        golang) print_message $BLUE "访问: http://localhost:${HOST_HTTP_PORT:-5004}  (API 前缀 /api)" ;;
+        dev)    print_message $BLUE "前端: http://localhost:${HOST_HTTP_PORT:-80}  (若未改端口则分别为: 3000 / 5004)" ;;
+        prod)   print_message $BLUE "前端: http://localhost:${HOST_HTTP_PORT:-80}/" ;;
       esac ;;
     down) cmd_args+=("$remove_flag" "${compose_extra[@]}"); execute_compose "$file" down "${cmd_args[@]}" ;;
     restart) execute_compose "$file" restart "${compose_extra[@]}" ;;

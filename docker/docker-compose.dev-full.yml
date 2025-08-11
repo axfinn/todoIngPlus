@@ -163,7 +163,7 @@ services:
     container_name: todoing_nginx_dev
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${HOST_HTTP_PORT:-80}:80"  # 可通过 HOST_HTTP_PORT 覆盖主访问端口
     volumes:
       - ./nginx/dev.conf:/etc/nginx/nginx.conf:ro
     depends_on:
