@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
-	pb "github.com/axfinn/todoIng/backend-go/pkg/api/v1"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	pb "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1"
 )
 
 func TestUserToProto(t *testing.T) {

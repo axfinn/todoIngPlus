@@ -9,9 +9,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/axfinn/todoIng/backend-go/internal/email"
-	"github.com/axfinn/todoIng/backend-go/internal/models"
-	nHub "github.com/axfinn/todoIng/backend-go/internal/notifications"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/email"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	nHub "github.com/axfinn/todoIngPlus/backend-go/internal/notifications"
 	"go.mongodb.org/mongo-driver/bson"
 )
 

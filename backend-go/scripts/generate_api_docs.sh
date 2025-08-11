@@ -1,18 +1,31 @@
-#!/bin/bash
+#!/bin/sh
+set -e
 
-# 生成完整的 API 文档
-echo "🚀 生成 TodoIng 完整 API 文档..."
+PROTO_DIR="api/proto/v1"
+OUT_DIR="docs/swagger"
+PLUGIN_BIN="/Users/finn/go/bin/protoc-gen-openapiv2"
 
-# 运行文档生成器
-go run tools/generate_complete_api.go
+PATH=$PATH:/Users/finn/go/bin
 
-echo ""
-echo "📖 文档访问方式："
-echo "   完整 API 文档: http://localhost:5004/api-docs"
-echo "   Swagger UI: http://localhost:5004/swagger/"
-echo "   文档中心: http://localhost:5004/docs/"
-echo ""
-echo "📁 生成的文件："
-echo "   - docs/api_complete.json (完整 API 定义)"
-echo ""
-echo "✅ API 文档生成完成！"
+mkdir -p "$OUT_DIR"
+
+if [ ! -x "$PLUGIN_BIN" ]; then
+  echo "❌ 未找到 protoc-gen-openapiv2: $PLUGIN_BIN" >&2
+  echo "运行: go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest" >&2
+  exit 1
+fi
+
+echo "===> 生成 OpenAPI"
+protoc \
+  -I "$PROTO_DIR" \
+  -I third_party \
+  --plugin=protoc-gen-openapiv2="$PLUGIN_BIN" \
+  --openapiv2_out "$OUT_DIR" \
+  --openapiv2_opt generate_unbound_methods=true,allow_merge=true,merge_file_name=openapi \
+  $(ls $PROTO_DIR/*.proto)
+
+if [ -f "$OUT_DIR/openapi.swagger.json" ]; then
+  echo "✅ 输出: $OUT_DIR/openapi.swagger.json"
+else
+  echo "⚠️ 未生成 JSON，查看目录: $OUT_DIR" >&2
+fi

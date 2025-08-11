@@ -124,16 +124,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/axfinn/todoIng/backend-go/internal/api"
-	"github.com/axfinn/todoIng/backend-go/internal/captcha"
-	"github.com/axfinn/todoIng/backend-go/internal/email"
-	"github.com/axfinn/todoIng/backend-go/internal/notifications"
-	"github.com/axfinn/todoIng/backend-go/internal/observability"
-	"github.com/axfinn/todoIng/backend-go/internal/services"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/api"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/captcha"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/email"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/notifications"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/observability"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 
-	_ "github.com/axfinn/todoIng/backend-go/docs" // 导入生成的文档
+	_ "github.com/axfinn/todoIngPlus/backend-go/docs" // 导入生成的文档
 )
 
 // 确保swag能够扫描到所有handler类型和swagger注释
@@ -203,6 +203,11 @@ func main() {
 
 	// Swagger 文档路由
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	// OpenAPI (proto 生成) 静态文件
+	r.HandleFunc("/swagger/openapi.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		http.ServeFile(w, r, "docs/swagger/todoing.swagger.json")
+	}).Methods(http.MethodGet)
 
 	// 静态文件服务 - API 文档
 	docsHandler := http.StripPrefix("/docs/", http.FileServer(http.Dir("docs/")))

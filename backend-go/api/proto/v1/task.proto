@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
-import "common.proto";
+import "common.proto"; // 引入 Response / Pagination* 定义
 
 // 任务状态枚举
 enum TaskStatus {
@@ -23,6 +23,13 @@ enum TaskPriority {
   TASK_PRIORITY_HIGH = 3;
 }
 
+// 任务评论
+message TaskComment {
+  string text = 1;
+  string created_by = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
 // 任务模型
 message Task {
   string id = 1;
@@ -30,13 +37,14 @@ message Task {
   string description = 3;
   TaskStatus status = 4;
   TaskPriority priority = 5;
-  google.protobuf.Timestamp due_date = 6; // 旧字段 (可作为 deadline / dueDate 兼容)
+  google.protobuf.Timestamp due_date = 6; // deprecated: 旧字段，对应后端 deadline，保留兼容
   string user_id = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
-  // 新增字段以贴合后端聚合逻辑（保留原有 tag 不变，仅追加）
   google.protobuf.Timestamp scheduled_date = 10; // scheduledDate
-  google.protobuf.Timestamp deadline = 11;       // deadline 真正截止
+  google.protobuf.Timestamp deadline = 11;       // 真正截止日期
+  string assignee = 12; // 新增: 与后端 Assignee 对齐（可能为空）
+  repeated TaskComment comments = 13; // 新增: 评论列表
 }
 
 // 创建任务请求
@@ -45,9 +53,9 @@ message CreateTaskRequest {
   string description = 2;
   TaskStatus status = 3;
   TaskPriority priority = 4;
-  google.protobuf.Timestamp due_date = 5;
+  google.protobuf.Timestamp deadline = 5; // 使用统一字段
   google.protobuf.Timestamp scheduled_date = 6;
-  google.protobuf.Timestamp deadline = 7;
+  string assignee = 7;
 }
 
 // 创建任务响应
@@ -89,9 +97,10 @@ message UpdateTaskRequest {
   string description = 3;
   TaskStatus status = 4;
   TaskPriority priority = 5;
-  google.protobuf.Timestamp due_date = 6;
+  google.protobuf.Timestamp deadline = 6;
   google.protobuf.Timestamp scheduled_date = 7;
-  google.protobuf.Timestamp deadline = 8;
+  string assignee = 8;
+  repeated TaskComment comments = 9; // 全量替换
 }
 
 // 更新任务响应

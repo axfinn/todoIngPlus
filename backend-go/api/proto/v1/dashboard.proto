@@ -2,9 +2,8 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
-import "google/protobuf/timestamp.proto";
 import "common.proto";
 import "task.proto";
 import "event.proto";
@@ -40,7 +39,6 @@ message GetDashboardDataResponse { Response response = 1; DashboardData data = 2
 
 message GetPriorityTasksRequest {}
 message GetPriorityTasksResponse { Response response = 1; repeated PriorityTask tasks = 2; int32 total = 3; }
-
 service DashboardService {
   rpc GetDashboardData(GetDashboardDataRequest) returns (GetDashboardDataResponse);
   rpc GetPriorityTasks(GetPriorityTasksRequest) returns (GetPriorityTasksResponse);

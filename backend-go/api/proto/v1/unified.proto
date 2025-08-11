@@ -2,13 +2,10 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
 import "common.proto";
-import "task.proto";
-import "event.proto";
-import "reminder.proto";
 
 // 统一聚合条目
 message UnifiedItem {
@@ -23,7 +20,7 @@ message UnifiedItem {
   string related_event_id = 9;
   string detail_url = 10;
   string source_id = 11;
-  bool is_unscheduled = 12;
+  bool is_unscheduled = 12; // 与后端未安排任务逻辑对齐
 }
 
 // Upcoming 请求

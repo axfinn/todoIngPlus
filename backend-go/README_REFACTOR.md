@@ -263,3 +263,33 @@ MONGO_URI=mongodb://localhost:27017
 5. **类型安全** - protobuf 提供强类型定义
 
 **恭喜！您的 TodoIng 后端现在支持最现代的 API 架构，同时保持了完全的向后兼容性！** 🎉
+
+## 追加: 基于 Proto 的统一接口与 Swagger 自动生成方案
+
+为减少手写注释维护成本，后续推荐使用 proto -> OpenAPI 生成：
+
+1. 定义/维护所有对外字段于 `api/proto/v1/*.proto`。
+2. 使用工具链：
+   - `protoc-gen-go`, `protoc-gen-go-grpc` (已配置)
+   - 新增：`protoc-gen-openapiv2` (grpc-gateway v2) 生成 swagger.json
+3. 安装：
+   ```bash
+   go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+   ```
+4. Makefile 新增目标：
+   ```makefile
+   openapi:
+	PROTO_TOOLS_BIN=$$(go env GOPATH)/bin; \
+	export PATH="$$PROTO_TOOLS_BIN:$$PATH"; \
+	mkdir -p docs; \
+	protoc -I api/proto/v1 \
+	  --openapiv2_out=docs --openapiv2_opt=allow_merge=true,merge_file_name=todoing,logtostderr=true,simple_operation_ids=true \
+	  api/proto/v1/*.proto
+   ```
+5. 生成输出: `docs/todoing.swagger.json` 供前端或 swagger-ui 使用。
+6. （可选）通过 `swag` 现有 HTTP 注释仍保留一段时间，逐步弃用，改为从 OpenAPI 中合并（或完全用 grpc-gateway 提供 REST 映射）。
+
+注意事项：
+- `go_package` 保持与实际模块路径一致。
+- 新增字段先改模型，再改 proto（单向约束：代码优先）。
+- 若需要与现有 REST 路由对齐，可在 proto 中添加 `google.api.http` 注解（需引入 google api annotations）。

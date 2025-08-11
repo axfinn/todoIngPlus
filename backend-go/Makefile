@@ -3,7 +3,8 @@
 
 # Variables
 GO_VERSION := 1.23
-PROTO_DIR := api/proto/v1
+PROTO_ROOT := api/proto
+PROTO_DIR := $(PROTO_ROOT)/v1
 GENERATED_DIR := pkg/api/v1
 BINARY_NAME := server
 GRPC_BINARY_NAME := grpc-server
@@ -27,14 +28,21 @@ help:
 	@echo "  install-tools    Install protobuf tools and dependencies"
 	@echo "  deps            Download Go dependencies"
 	@echo "  proto           Generate Go code from proto files"
+	@echo "  openapi         Generate OpenAPI swagger from proto"
+	@echo "  proto-all       Generate proto + OpenAPI"
 	@echo "  build           Build HTTP server binary"
 	@echo "  build-grpc      Build gRPC server binary"
 	@echo "  run             Run HTTP server locally"
 	@echo "  run-grpc        Run gRPC server locally"
 	@echo ""
+	@echo "Documentation:"
+	@echo "  openapi         Generate OpenAPI (swagger) JSON"
+	@echo "  docs-openapi    Proto -> OpenAPI + summary list"
+	@echo "  docs-clean      Clean swagger output"
+	@echo ""
 	@echo "Testing:"
 	@echo "  test            Run all tests"
-	@echo "  test-unit       Run unit tests only"
+	@echo "  test-unit       Run unit tests"
 	@echo "  test-convert    Run conversion layer tests"
 	@echo "  test-coverage   Run tests with coverage report"
 	@echo ""
@@ -52,11 +60,6 @@ help:
 	@echo "  docker-stop          Stop and remove Docker containers"
 	@echo "  docker-dev           Start Docker development environment"
 	@echo ""
-	@echo "Documentation:"
-	@echo "  docs            Generate complete API documentation"
-	@echo "  docs-build      Build documentation generator tool"
-	@echo "  docs-clean      Clean generated documentation"
-	@echo ""
 	@echo "Utilities:"
 	@echo "  clean           Clean build artifacts"
 	@echo "  clean-proto     Clean generated proto files"
@@ -64,9 +67,13 @@ help:
 # Install protobuf tools
 .PHONY: install-tools
 install-tools:
+	@echo "Ensuring go.mod go version format..."
+	@grep '^go 1.23$$' go.mod >/dev/null || sed -i '' 's/^go .*/go 1.23/' go.mod || true
 	@echo "Installing protobuf tools..."
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.26.2
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.26.2
 	@echo "Protobuf tools installed successfully!"
 
 # Download dependencies
@@ -79,16 +86,34 @@ deps:
 
 # Generate Go code from proto files
 .PHONY: proto
+PROTO_IMPORTS := -I $(PROTO_DIR) -I third_party
 proto: install-tools
-	@echo "Generating Go code from proto files..."
+	@echo "Generating Go code (all protos in one invocation)..."
 	@mkdir -p $(GENERATED_DIR)
-	@for proto_file in $(PROTO_DIR)/*.proto; do \
-		echo "Processing $$proto_file..."; \
-		$(PROTOC) --go_out=$(GENERATED_DIR) --go_opt=paths=source_relative \
-			--go-grpc_out=$(GENERATED_DIR) --go-grpc_opt=paths=source_relative \
-			--proto_path=$(PROTO_DIR) $$proto_file; \
-	done
-	@echo "Proto code generation completed!"
+	@PROTO_TOOLS_BIN=$$(go env GOPATH)/bin; \
+	PATH="$$PROTO_TOOLS_BIN:$$PATH" protoc $(PROTO_IMPORTS) \
+	  --go_out=$(GENERATED_DIR) --go_opt=paths=source_relative \
+	  --go-grpc_out=$(GENERATED_DIR) --go-grpc_opt=paths=source_relative \
+	  --grpc-gateway_out=$(GENERATED_DIR) --grpc-gateway_opt=paths=source_relative,generate_unbound_methods=true \
+	  $(PROTO_DIR)/*.proto || exit 1; \
+	echo "Proto code generation completed!"
+
+# OpenAPI (Swagger) generation from proto
+.PHONY: openapi
+openapi: install-tools
+	@echo "Generating OpenAPI (swagger) from proto files..."
+	@PROTO_TOOLS_BIN=$$(go env GOPATH)/bin; \
+	mkdir -p docs/swagger; \
+	PATH="$$PROTO_TOOLS_BIN:$$PATH" protoc $(PROTO_IMPORTS) \
+	  --openapiv2_out=docs/swagger \
+	  --openapiv2_opt=allow_merge=true,merge_file_name=todoing,logtostderr=true,simple_operation_ids=true,json_names_for_fields=false \
+	  $(PROTO_DIR)/*.proto; \
+	echo "Swagger JSON: docs/swagger/todoing.swagger.json"
+
+# Convenience target: proto + openapi
+.PHONY: proto-all
+proto-all: proto openapi
+	@echo "Proto + OpenAPI generation completed."
 
 # Build HTTP server
 .PHONY: build
@@ -257,51 +282,14 @@ verify:
 	@find $(GENERATED_DIR) -name "*.go" 2>/dev/null | head -5 || echo "No generated files found"
 
 # Documentation generation
-.PHONY: docs-build
-docs-build:
-	@echo "Building documentation generator tool..."
-	go build -o bin/generate-docs ./tools/generate_complete_api.go
-	@echo "Documentation generator built: bin/generate-docs"
-
-.PHONY: docs
-docs: docs-build
-	@echo "🚀 Generating complete API documentation..."
-	./bin/generate-docs
-	@echo "✅ Complete API documentation generated successfully!"
-	@echo "📄 File location: docs/api_complete.json"
-	@echo "📊 Documentation includes:"
-	@echo "   - REST API endpoints with full specifications"
-	@echo "   - gRPC API endpoints (simulated as HTTP)"
-	@echo "   - Complete data model definitions"
-	@echo "   - Request/response schemas with examples"
-	@echo ""
-	@echo "🔗 Access documentation:"
-	@echo "   API Docs: http://localhost:5004/api-docs"
-	@echo "   Swagger UI: http://localhost:5004/swagger/"
-	@echo "   Documentation Center: http://localhost:5004/docs/"
-	@echo ""
-	@echo "💡 Usage:"
-	@echo "   make run          # Start API server"
-	@echo "   make docs         # Regenerate documentation"
-	@echo "   make docs-clean   # Clean generated docs"
-
 .PHONY: docs-clean
 docs-clean:
-	@echo "Cleaning generated documentation..."
-	rm -f docs/api_complete.json
-	rm -f bin/generate-docs
-	@echo "Documentation files cleaned!"
+	@echo "Cleaning swagger documentation..."
+	rm -f docs/swagger/todoing.swagger.json || true
+	@echo "Swagger documentation cleaned!"
 
-.PHONY: docs-serve
-docs-serve: docs run
-	@echo "📖 API documentation is now available at:"
-	@echo "   Complete API docs: http://localhost:5004/api-docs"
-	@echo "   Swagger UI: http://localhost:5004/swagger/"
-	@echo "   Documentation center: http://localhost:5004/docs/"
-
-# Quick documentation update (for development)
-.PHONY: docs-dev
-docs-dev:
-	@echo "🔄 Quick documentation update for development..."
-	go run ./tools/generate_complete_api.go
-	@echo "✅ Documentation updated! File: docs/api_complete.json"
+# Proto -> OpenAPI + summary
+.PHONY: docs-openapi
+docs-openapi: openapi
+	@echo "===> OpenAPI 主文件: docs/swagger/todoing.swagger.json" || true
+	@ls -1 docs/swagger | sed 's/^/ - /'

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1"; // 与现有保持一致 (注意仓库实际名 todoIngPlus)
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
 import "common.proto";
@@ -38,7 +38,8 @@ message Event {
   google.protobuf.Timestamp event_date = 6;
   RecurrenceType recurrence_type = 7; // none 则为一次性
   map<string, string> recurrence_config = 8; // 预留 (例如 day, interval)
-  int32 importance_level = 9; // 1-5
+  // importance_level 对齐后端 ImportanceLevel (1-5)
+  int32 importance_level = 9; // unchanged
   repeated string tags = 10;
   string location = 11;
   bool is_all_day = 12;

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
 import "common.proto";
@@ -23,7 +23,7 @@ message Reminder {
   string user_id = 3;
   int32 advance_days = 4;
   repeated string reminder_times = 5; // HH:MM
-  repeated google.protobuf.Timestamp absolute_times = 6; // 绝对时间（可空）
+  repeated google.protobuf.Timestamp absolute_times = 6; // 与后端 AbsoluteTimes 对齐
   ReminderType reminder_type = 7;
   string custom_message = 8;
   bool is_active = 9;
@@ -44,7 +44,7 @@ message CreateReminderRequest {
   string event_id = 1;
   int32 advance_days = 2;
   repeated string reminder_times = 3;
-  repeated google.protobuf.Timestamp absolute_times = 4; // 二选一逻辑由服务端校验
+  repeated google.protobuf.Timestamp absolute_times = 4; // 二选一: 与 times 互斥
   ReminderType reminder_type = 5;
   string custom_message = 6;
 }

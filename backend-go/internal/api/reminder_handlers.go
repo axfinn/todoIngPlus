@@ -12,16 +12,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/email"
-	"github.com/axfinn/todoIng/backend-go/internal/observability"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/email"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/observability"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
-	"github.com/axfinn/todoIng/backend-go/internal/services"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 )
 
 // CreateReminder 创建提醒

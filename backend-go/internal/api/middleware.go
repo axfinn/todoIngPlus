@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/auth"
-	"github.com/axfinn/todoIng/backend-go/internal/observability"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/auth"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/observability"
 	"github.com/gorilla/mux"
 )
 

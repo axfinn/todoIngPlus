@@ -1,0 +1,36 @@
+syntax = "proto3";
+package todoing.api.v1;
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+message Notification {
+  string id = 1;
+  string type = 2;
+  string message = 3;
+  string event_id = 4; // optional
+  bool is_read = 5;
+  google.protobuf.Timestamp read_at = 6;
+  google.protobuf.Timestamp created_at = 7;
+  map<string,string> metadata = 8;
+}
+
+message CreateNotificationRequest { string type = 1; string message = 2; string event_id = 3; }
+message CreateNotificationResponse { Response response = 1; Notification notification = 2; }
+
+message ListNotificationsRequest { bool unread_only = 1; int32 limit = 2; }
+message ListNotificationsResponse { Response response = 1; repeated Notification notifications = 2; int32 count = 3; }
+
+message MarkNotificationReadRequest { string id = 1; }
+message MarkNotificationReadResponse { Response response = 1; bool success = 2; }
+
+message MarkAllNotificationsReadRequest {}
+message MarkAllNotificationsReadResponse { Response response = 1; int64 modified = 2; }
+
+service NotificationService {
+  rpc CreateNotification(CreateNotificationRequest) returns (CreateNotificationResponse);
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+  rpc MarkAllNotificationsRead(MarkAllNotificationsReadRequest) returns (MarkAllNotificationsReadResponse);
+}

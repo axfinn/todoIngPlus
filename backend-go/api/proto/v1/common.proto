@@ -2,10 +2,9 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "google/protobuf/any.proto";
-import "google/protobuf/timestamp.proto";
 
 // 通用响应结构
 message Response {

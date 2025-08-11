@@ -12,10 +12,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/axfinn/todoIng/backend-go/internal/auth"
-	"github.com/axfinn/todoIng/backend-go/internal/captcha"
-	"github.com/axfinn/todoIng/backend-go/internal/email"
-	"github.com/axfinn/todoIng/backend-go/test/testutil"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/auth"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/captcha"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/email"
+	"github.com/axfinn/todoIngPlus/backend-go/test/testutil"
 )
 
 func TestRegister(t *testing.T) {

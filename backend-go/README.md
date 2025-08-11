@@ -17,6 +17,7 @@
 TodoIng Go 后端是 Node.js 版本的高性能重构，采用现代化的 Go 技术栈，提供：
 
 ### 🎯 核心功能
+
 - ✅ **用户认证系统** - JWT 令牌认证，邮箱验证码
 - ✅ **任务管理** - 完整的 CRUD 操作，导入导出功能
 - ✅ **报表生成** - 日报、周报、月报自动生成
@@ -25,6 +26,7 @@ TodoIng Go 后端是 Node.js 版本的高性能重构，采用现代化的 Go �
 - ✅ **邮箱验证** - 完整的邮箱验证码系统
 
 ### 🔌 API 架构
+
 - ✅ **RESTful API** - 标准的 HTTP JSON API
 - ✅ **gRPC 服务** - 高性能的二进制协议
 - ✅ **Swagger 文档** - 自动生成的 API 文档
@@ -34,6 +36,7 @@ TodoIng Go 后端是 Node.js 版本的高性能重构，采用现代化的 Go �
 ## 🏗️ 技术架构
 
 ### 核心技术栈
+
 ```
 📦 技术选型
 ├── 🌐 Web 框架: Gorilla Mux
@@ -47,6 +50,7 @@ TodoIng Go 后端是 Node.js 版本的高性能重构，采用现代化的 Go �
 ```
 
 ### 项目结构
+
 ```
 backend-go/
 ├── 📁 cmd/                    # 应用程序入口
@@ -73,6 +77,7 @@ backend-go/
 ## 🚀 快速开始
 
 ### 📋 环境要求
+
 - **Go** 1.23 或更高版本
 - **MongoDB** 5.0 或更高版本
 - **Protocol Buffers** 编译器 (可选，用于 gRPC)
@@ -80,9 +85,10 @@ backend-go/
 ### 🛠️ 开发环境搭建
 
 #### 1. 克隆并准备项目
+
 ```bash
 # 克隆项目
-git clone https://github.com/axfinn/todoIng.git
+git clone https://github.com/axfinn/todoIngPlus.git
 cd todoIng/backend-go
 
 # 安装依赖
@@ -93,6 +99,7 @@ make docs
 ```
 
 #### 2. 配置环境变量
+
 ```bash
 # 复制环境变量模板
 cp .env.example .env
@@ -102,6 +109,7 @@ vim .env
 ```
 
 #### 3. 启动数据库
+
 ```bash
 # 使用 Docker 启动 MongoDB
 cd .. && docker-compose -f docker-compose.dev.yml up mongodb -d
@@ -111,6 +119,7 @@ mongod --dbpath ./data/db
 ```
 
 #### 4. 运行服务
+
 ```bash
 # 方式1: 使用 Makefile
 make run
@@ -123,6 +132,7 @@ make build && ./server
 ```
 
 #### 5. 验证服务
+
 ```bash
 # 健康检查
 curl http://localhost:5004/health
@@ -175,6 +185,7 @@ cd ../docker
 ## 🔧 开发工具
 
 ### Makefile 命令
+
 ```bash
 # 📚 查看所有可用命令
 make help
@@ -218,17 +229,10 @@ make clean-proto       # 清理生成的 Proto 文件
 ```bash
 # 生成完整 API 文档 (包含 REST + gRPC)
 make docs
-
-# 输出示例:
-# 🚀 生成 TodoIng 完整 API 文档...
-# ✅ 完整 API 文档生成成功!
-# 📄 文件位置: docs/api_complete.json
-# 📊 包含接口: 16 个 REST API + 5 个 gRPC API
-# 📋 数据模型: 26 个
-# 🔗 访问地址: http://localhost:5004/swagger/
 ```
 
 #### 文档包含内容
+
 - **16个 REST API 接口**：完整的 HTTP 接口规范
 - **5个 gRPC API 接口**：Protobuf 定义的高性能接口
 - **26个数据模型**：详细的请求/响应类型定义
@@ -239,6 +243,7 @@ make docs
 ### REST API 端点
 
 #### 🔐 认证模块
+
 ```
 POST   /api/auth/register           # 用户注册
 POST   /api/auth/login              # 用户登录  
@@ -250,6 +255,7 @@ POST   /api/auth/verify-captcha     # 验证图形验证码
 ```
 
 #### 📋 任务管理
+
 ```
 GET    /api/tasks                   # 获取任务列表
 POST   /api/tasks                   # 创建新任务
@@ -261,6 +267,7 @@ POST   /api/tasks/import            # 批量导入任务
 ```
 
 #### 📊 报表管理
+
 ```
 GET    /api/reports                 # 获取报表列表
 POST   /api/reports/generate        # 生成新报表
@@ -273,6 +280,7 @@ GET    /api/reports/{id}/export/{format} # 导出报表 (pdf/excel/word)
 ### gRPC 服务
 
 #### 认证服务 (AuthService)
+
 ```protobuf
 service AuthService {
   rpc Login(AuthLoginRequest) returns (AuthLoginResponse);
@@ -282,6 +290,7 @@ service AuthService {
 ```
 
 #### 任务服务 (TaskService)
+
 ```protobuf
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
@@ -290,6 +299,7 @@ service TaskService {
 ```
 
 #### 报表服务 (ReportService)
+
 ```protobuf
 service ReportService {
   rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse);
@@ -297,6 +307,7 @@ service ReportService {
 ```
 
 #### 验证码服务 (CaptchaService)
+
 ```protobuf
 service CaptchaService {
   rpc GenerateCaptcha(GenerateCaptchaRequest) returns (GenerateCaptchaResponse);
@@ -307,6 +318,7 @@ service CaptchaService {
 ## ⚙️ 配置管理
 
 ### 环境变量
+
 ```bash
 # 🗄️ 数据库配置
 MONGODB_URI=mongodb://localhost:27017/todoing
@@ -339,6 +351,7 @@ DEBUG_MODE=false               # 调试模式
 ```
 
 ### 功能开关说明
+
 | 环境变量 | 类型 | 默认值 | 说明 |
 |----------|------|--------|------|
 | `ENABLE_CAPTCHA` | boolean | `false` | 启用图形验证码功能 |
@@ -350,6 +363,7 @@ DEBUG_MODE=false               # 调试模式
 ## 🧪 测试
 
 ### 运行测试
+
 ```bash
 # 运行所有测试
 make test
@@ -365,6 +379,7 @@ make test-coverage
 ```
 
 ### API 测试示例
+
 ```bash
 # 1. 健康检查
 curl http://localhost:5004/health
@@ -403,9 +418,65 @@ curl -X POST http://localhost:5004/api/tasks \
   }'
 ```
 
+### 🔄 Proto & OpenAPI 统一生成（新增）
+
+> 当前已迁移到以 Protobuf 为单一真实来源 (Single Source of Truth)。HTTP(gRPC-Gateway) 与 OpenAPI 文档均由 *.proto 自动生成。旧的 tools/generate_complete_api.go 仍可用，但已标记为 Deprecated。
+
+常用命令：
+
+```bash
+# 仅生成 Go gRPC / Gateway 代码
+make proto
+
+# 仅生成 OpenAPI (Swagger JSON) -> docs/swagger/todoing.swagger.json
+make openapi
+
+# 一次性生成（推荐在修改 proto 后）
+make proto-all
+
+# 生成 OpenAPI 并列出 swagger 目录内容
+make docs-openapi
+```
+
+变更流程建议：
+
+1. 修改或新增 proto (位于 api/proto/v1)
+2. 运行 `make proto-all`
+3. 查看 `docs/swagger/todoing.swagger.json`
+4. 如需提交：同时提交 *.proto、生成的 pkg/api/v1/*.pb.go、docs/swagger/todoing.swagger.json
+
+目录说明：
+
+```text
+api/proto/v1/*.proto               # 接口定义（唯一真实来源）
+pkg/api/v1/*.pb.go                 # gRPC & HTTP(Gateway) 生成代码
+docs/swagger/todoing.swagger.json  # 聚合的 OpenAPI 文档
+```
+
+常见问题：
+
+- 编辑器里 proto 显示 import not found (如 common.proto)：属于本地 linter 未加 include path，执行 `make proto` 若成功即可忽略。
+- 未使用的 import 警告：保持最小化 import；确需引用再添加。当前 dashboard.proto 已移除未使用的 timestamp。
+- OpenAPI 字段命名：已使用 `json_names_for_fields=false` 以保持与 proto 字段一致；前端可直接对接。
+
+后续计划：
+
+- 移除或存档 legacy 文档生成器 (tools/generate_complete_api.go)
+- 引入 CI 检查：proto 变动必须伴随生成文件 & OpenAPI 变更
+- 增补注释 (proto 注释将自动进入 OpenAPI description)
+
+如需重新生成并验证：
+
+```bash
+make clean-proto && make proto-all && grep -n 'DashboardService' docs/swagger/todoing.swagger.json
+```
+
+---
+
 ## 📊 性能指标
 
 ### 系统性能
+
 - **启动时间**: < 3 秒
 - **API 响应时间**: 平均 < 100ms
 - **内存占用**: < 50MB (空载)
@@ -413,6 +484,7 @@ curl -X POST http://localhost:5004/api/tasks \
 - **gRPC 性能**: 比 REST API 快 30-50%
 
 ### 基准测试
+
 ```bash
 # HTTP API 压力测试
 ab -n 10000 -c 100 http://localhost:5004/health
@@ -427,6 +499,7 @@ ghz --insecure --proto ./api/proto/v1/auth.proto \
 ## 🚀 生产部署
 
 ### Docker 部署
+
 ```bash
 # 构建生产镜像
 docker build -t todoing-backend:prod -f Dockerfile .
@@ -440,6 +513,7 @@ docker run -d \
 ```
 
 ### Kubernetes 部署
+
 ```yaml
 # k8s-deployment.yaml
 apiVersion: apps/v1
@@ -467,6 +541,7 @@ spec:
 ```
 
 ### 云平台部署建议
+
 - **AWS**: ECS + RDS DocumentDB
 - **Google Cloud**: Cloud Run + Firestore
 - **Azure**: Container Instances + Cosmos DB
@@ -475,6 +550,7 @@ spec:
 ## 🔍 监控和日志
 
 ### 结构化日志
+
 系统使用结构化日志记录，便于分析和监控：
 
 ```json
@@ -492,6 +568,7 @@ spec:
 ```
 
 ### 健康检查端点
+
 ```bash
 # 基础健康检查
 GET /health
@@ -506,6 +583,7 @@ GET /health/db
 ## 🤝 贡献指南
 
 ### 开发流程
+
 1. **Fork 项目** 并创建功能分支
 2. **遵循代码规范**: `gofmt`, `golint`, `go vet`
 3. **编写测试** 确保代码覆盖率 > 80%
@@ -513,6 +591,7 @@ GET /health/db
 5. **提交 PR** 并等待 Review
 
 ### 代码规范
+
 ```bash
 # 格式化代码
 make fmt
@@ -533,9 +612,9 @@ make fmt vet lint test
 
 ## 🔗 相关链接
 
-- **项目主页**: https://github.com/axfinn/todoIng
+- **项目主页**: https://github.com/axfinn/todoIngPlus
 - **API 文档**: http://localhost:5004/swagger/
-- **问题反馈**: https://github.com/axfinn/todoIng/issues
+- **问题反馈**: https://github.com/axfinn/todoIngPlus/issues
 - **gRPC 文档**: [Proto 文件](./api/proto/v1/)
 
 ## 📄 许可证
