@@ -22,3 +22,16 @@ type Task struct {
 	ScheduledDate *time.Time `bson:"scheduledDate" json:"scheduledDate"`
 	Comments      []Comment  `bson:"comments" json:"comments"`
 }
+
+// TaskUpdateRequest 用于部分更新
+type TaskUpdateRequest struct {
+	ID            string
+	Title         *string
+	Description   *string
+	Status        *string
+	Priority      *string
+	Assignee      *string
+	Deadline      *time.Time
+	ScheduledDate *time.Time
+	Comments      []Comment
+}

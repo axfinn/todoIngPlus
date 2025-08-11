@@ -3,9 +3,9 @@ version: '3.8'
 services:
   # MongoDB服务
   mongodb:
-    image: mongo:5.0
+    image: mongo:7-jammy
     container_name: todoing_mongodb_local
-    restart: always
+    restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
@@ -13,27 +13,25 @@ services:
     networks:
       - todoing_network_local
 
+  # 本地快速运行 Go 后端（原 Node.js 已弃用）
   backend:
     build:
-      context: ./backend
+      context: ../backend-go
       dockerfile: Dockerfile
-    container_name: todoing_backend_local
-    restart: always
+      target: production
+    container_name: todoing_backend_go_local
+    restart: unless-stopped
     environment:
-      - NODE_ENV=production
-      - MONGO_URI=mongodb://todoing_mongodb_local:27017/todoing
-      - JWT_SECRET=your_jwt_secret_here
-      - PORT=5001
-      # 是否禁用注册功能
-      - DISABLE_REGISTRATION=true
-      # 是否启用登录验证码
-      - ENABLE_CAPTCHA=false
-      # 默认用户配置
-      - DEFAULT_USERNAME=admin
-      - DEFAULT_EMAIL=admin@example.com
-      - DEFAULT_PASSWORD=securepassword
+      PORT: 5004
+      MONGO_URI: mongodb://mongodb:27017/todoing
+      JWT_SECRET: dev_local_change_me
+      DISABLE_REGISTRATION: "true"
+      ENABLE_CAPTCHA: "false"
+      DEFAULT_USERNAME: admin
+      DEFAULT_EMAIL: admin@example.com
+      DEFAULT_PASSWORD: securepassword
     ports:
-      - "5001:5001"
+      - "5004:5004"
     depends_on:
       - mongodb
     networks:
@@ -41,18 +39,16 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: Dockerfile
     container_name: todoing_frontend_local
-    restart: always
+    restart: unless-stopped
     ports:
       - "80:80"
     environment:
-      - VITE_API_BASE_URL=/api
-      # 是否禁用注册功能
-      - VITE_DISABLE_REGISTRATION=true
-      # 是否启用登录验证码
-      - VITE_ENABLE_CAPTCHA=false
+      VITE_API_BASE_URL: /api
+      VITE_DISABLE_REGISTRATION: "true"
+      VITE_ENABLE_CAPTCHA: "false"
     depends_on:
       - backend
     networks:

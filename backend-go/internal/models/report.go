@@ -8,6 +8,11 @@ type Statistics struct {
 	InProgressTasks int `bson:"inProgressTasks" json:"inProgressTasks"`
 	OverdueTasks    int `bson:"overdueTasks" json:"overdueTasks"`
 	CompletionRate  int `bson:"completionRate" json:"completionRate"`
+	// 扩展: 事件 & 提醒统计（不影响现有前端, 先存储内部备用）
+	TotalEvents     int `bson:"totalEvents,omitempty" json:"totalEvents,omitempty"`
+	UpcomingEvents  int `bson:"upcomingEvents,omitempty" json:"upcomingEvents,omitempty"`
+	TotalReminders  int `bson:"totalReminders,omitempty" json:"totalReminders,omitempty"`
+	ActiveReminders int `bson:"activeReminders,omitempty" json:"activeReminders,omitempty"`
 }
 
 type Report struct {

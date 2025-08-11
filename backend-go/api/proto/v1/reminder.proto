@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package todoing.api.v1;
+
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+import "event.proto"; // 为了在测试提醒响应中返回事件
+
+// 提醒类型
+enum ReminderType {
+  REMINDER_TYPE_UNSPECIFIED = 0;
+  REMINDER_TYPE_APP = 1;   // app (SSE)
+  REMINDER_TYPE_EMAIL = 2; // email
+  REMINDER_TYPE_BOTH = 3;  // both
+}
+
+// 提醒
+message Reminder {
+  string id = 1;
+  string event_id = 2;
+  string user_id = 3;
+  int32 advance_days = 4;
+  repeated string reminder_times = 5; // HH:MM
+  repeated google.protobuf.Timestamp absolute_times = 6; // 与后端 AbsoluteTimes 对齐
+  ReminderType reminder_type = 7;
+  string custom_message = 8;
+  bool is_active = 9;
+  google.protobuf.Timestamp last_sent = 10;
+  google.protobuf.Timestamp next_send = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// 包含事件的提醒
+message ReminderWithEvent {
+  Reminder reminder = 1;
+  Event event = 2;
+}
+
+// 创建
+message CreateReminderRequest {
+  string event_id = 1;
+  int32 advance_days = 2;
+  repeated string reminder_times = 3;
+  repeated google.protobuf.Timestamp absolute_times = 4; // 二选一: 与 times 互斥
+  ReminderType reminder_type = 5;
+  string custom_message = 6;
+}
+message CreateReminderResponse { Response response = 1; Reminder reminder = 2; }
+
+// 获取单个
+message GetReminderRequest { string id = 1; }
+message GetReminderResponse { Response response = 1; ReminderWithEvent reminder = 2; }
+
+// 更新（全部可选）
+message UpdateReminderRequest {
+  string id = 1;
+  int32 advance_days = 2; // 0 表示更新为 0；不传表示不修改
+  repeated string reminder_times = 3;
+  repeated google.protobuf.Timestamp absolute_times = 4;
+  ReminderType reminder_type = 5;
+  string custom_message = 6;
+  bool is_active = 7;
+}
+message UpdateReminderResponse { Response response = 1; Reminder reminder = 2; }
+
+// 删除
+message DeleteReminderRequest { string id = 1; }
+
+// 列表
+message ListRemindersRequest {
+  PaginationRequest pagination = 1;
+  bool active_only = 2;
+}
+message ListRemindersResponse {
+  Response response = 1;
+  repeated ReminderWithEvent reminders = 2;
+  PaginationResponse pagination = 3;
+}
+
+// 精简列表 (无分页)
+message ListSimpleRemindersRequest { bool active_only = 1; int32 limit = 2; }
+message ListSimpleRemindersResponse { Response response = 1; repeated Reminder reminders = 2; int32 count = 3; }
+
+// 即将到来的提醒
+message UpcomingReminder {
+  string id = 1;
+  string event_title = 2;
+  google.protobuf.Timestamp event_date = 3;
+  string message = 4;
+  int32 days_left = 5;
+  int32 importance = 6;
+  google.protobuf.Timestamp reminder_at = 7;
+}
+message GetUpcomingRemindersRequest { int32 hours = 1; }
+message GetUpcomingRemindersResponse { Response response = 1; repeated UpcomingReminder reminders = 2; int32 hours = 3; }
+
+// 预览提醒计划（不落库）
+message PreviewReminderRequest {
+  string event_id = 1;
+  int32 advance_days = 2;
+  repeated string reminder_times = 3;
+}
+message PreviewReminderItem { google.protobuf.Timestamp reminder_at = 1; string message = 2; }
+message PreviewReminderResponse { Response response = 1; repeated PreviewReminderItem schedule = 2; }
+
+// Snooze
+message SnoozeReminderRequest { string id = 1; int32 snooze_minutes = 2; }
+message SnoozeReminderResponse { Response response = 1; int32 snooze_minutes = 2; }
+
+// Toggle Active
+message ToggleReminderActiveRequest { string id = 1; }
+message ToggleReminderActiveResponse { Response response = 1; bool is_active = 2; }
+
+// 创建测试提醒
+message CreateTestReminderRequest {
+  string event_id = 1; // 可空：后端自动挑选
+  string message = 2;
+  int32 delay_seconds = 3;
+  bool send_email = 4;
+}
+message CreateTestReminderResponse {
+  Response response = 1;
+  Reminder reminder = 2;
+  Event event = 3;
+  bool email_sent = 4;
+  string email_error = 5; // 可空
+}
+
+service ReminderService {
+  rpc CreateReminder(CreateReminderRequest) returns (CreateReminderResponse);
+  rpc GetReminder(GetReminderRequest) returns (GetReminderResponse);
+  rpc UpdateReminder(UpdateReminderRequest) returns (UpdateReminderResponse);
+  rpc DeleteReminder(DeleteReminderRequest) returns (Response);
+  rpc ListReminders(ListRemindersRequest) returns (ListRemindersResponse);
+  rpc ListSimpleReminders(ListSimpleRemindersRequest) returns (ListSimpleRemindersResponse);
+  rpc GetUpcomingReminders(GetUpcomingRemindersRequest) returns (GetUpcomingRemindersResponse);
+  rpc PreviewReminder(PreviewReminderRequest) returns (PreviewReminderResponse);
+  rpc SnoozeReminder(SnoozeReminderRequest) returns (SnoozeReminderResponse);
+  rpc ToggleReminderActive(ToggleReminderActiveRequest) returns (ToggleReminderActiveResponse);
+  rpc CreateTestReminder(CreateTestReminderRequest) returns (CreateTestReminderResponse);
+}

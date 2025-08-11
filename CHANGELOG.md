@@ -1,5 +1,47 @@
 # TodoIng 变更日志
 
+## [0.0.2] - 2025-08-11
+
+### 🚀 新增
+
+- EventRepository / ReminderRepository 下沉所有 Mongo 访问与聚合
+- Reminder Preview 接口：不落库计算 next_send 与描述
+- Immediate Test Reminder：快速创建测试提醒 + 可选即时邮件
+- Unified 聚合：基于 repository 的 upcoming / calendar 视图 + debug 输出
+
+### ♻️ 重构
+
+- Event / Reminder Service 去除直接 *mongo.Database 依赖，改为 interface 注入
+- Advance 事件推进异步级联重算相关 active 相对提醒 next_send
+- Pending / List / Search / Calendar / Advance 等复杂逻辑集中仓储层
+
+### ✏️ 文档
+
+- 更新 architecture.md / technical-architecture.md / backend-go README / reminder-module.md 描述新架构
+- 强调 Protobuf 作为 API 单一事实来源（SSOT）
+- 补充 Preview / Immediate Test / Advance 级联流程图与说明
+
+### 🛠️ 调整
+
+- 统一 UpdateFields 签名为 map[string]interface{}
+- ReminderRepository interface 增补 Preview，解决编译缺口
+- HTTP handlers 改为显式构造 repository 再注入 service
+
+### 🧹 清理
+
+- 移除服务层中残存的 bson / 直接集合访问
+- 修复多处 Markdown 规范（标题空行 / fenced code 语言 / 表格对齐 / 去尾随空格）
+
+### ⚠️ 未完成（Roadmap）
+
+- UserRepository 抽象（当前 scheduler 仍直接查用户邮箱）
+- Tasks / Reports 等其余集合仓储化
+- Prometheus 指标 & Tracing
+- 更丰富的循环 / 排除日 & 批量重算接口
+- Repository 单元测试（Advance / Preview / Pending 边界）
+
+---
+
 ## [0.0.1] - 2025-08-11
 
 ### ✨ 核心特性

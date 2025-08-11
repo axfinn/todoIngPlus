@@ -1,393 +1,216 @@
-# 数据库设计
+# 数据库设计 (当前 dev 实现)
+
+> 已清理未实现的团队(teams)、任务历史(task_histories)、用户统计(user_statistics)、任务总结(task_summaries)等集合描述；以下仅保留代码真实存在并被使用的集合结构。
 
 ## 概述
 
-todoIng 使用 MongoDB 作为主要数据存储，采用文档型数据库设计，支持任务生命周期管理和变更历史追踪功能。
+使用 MongoDB 作为主数据存储。集合简单，围绕用户、任务、事件、提醒、报告、通知六类主体。所有时间统一使用 UTC 存储，前端负责本地化显示。
 
-## 数据库结构
+## 集合一览
 
-### 数据库名称
-```
-todoing
-```
+| 集合 | 说明 | 关键索引建议 |
+|------|------|--------------|
+| `users` | 用户登录/认证基础信息 | `username`(唯一), `email`(唯一) |
+| `tasks` | 用户任务 | `createdBy`, `status`, `priority`, `deadline`, `scheduledDate` |
+| `events` | 事件（含循环/重要级） | `user_id`, `event_date`, `recurrence_type` |
+| `reminders` | 提醒规则 (与事件关联) | `{user_id, is_active, next_send}`, `event_id` |
+| `reports` | 用户报告/统计快照 | `userId`, `type`, `createdAt` |
+| `notifications` | 应用内通知 + SSE 推送来源 | `user_id`, `type`, `created_at` |
 
-### 集合设计
+---
 
-#### 1. 用户集合 (users)
-存储系统用户信息。
+## 1. users
 
-**结构**:
-```javascript
+```jsonc
 {
-  _id: ObjectId,
-  username: String,           // 用户名
-  email: String,              // 邮箱
-  password: String,           // 加密密码
-  profile: {
-    avatar: String,           // 头像URL
-    firstName: String,        // 名字
-    lastName: String,         // 姓氏
-    bio: String,              // 个人简介
-    skills: [String],         // 技能标签
-    location: String          // 位置
+  "_id": ObjectId,
+  "username": String,
+  "email": String,
+  "password": String,        // bcrypt hash
+  "createdAt": Date
+}
+```
+
+## 2. tasks
+
+对应 `internal/models/task.go`。
+
+```jsonc
+{
+  "_id": ObjectId | String,   // 当前模型使用 string 形式序列化
+  "title": String,
+  "description": String,
+  "status": String,           // 例如: pending / in_progress / completed
+  "priority": String,         // 可选: low / medium / high
+  "assignee": String|null,    // (预留) 当前多为创建者自己
+  "createdBy": String,        // user id
+  "createdAt": Date,
+  "updatedAt": Date,
+  "deadline": Date|null,
+  "scheduledDate": Date|null,
+  "comments": [{
+     "text": String,
+     "createdBy": String,
+     "createdAt": Date
+  }]
+}
+```
+
+索引建议：
+
+- `{ createdBy: 1, createdAt: -1 }` 最近任务列表
+- `{ createdBy: 1, status: 1 }` 状态过滤
+- `{ createdBy: 1, deadline: 1 }` 即将到期排序
+
+## 3. events
+
+对应 `internal/models/event.go`。
+
+```jsonc
+{
+  "_id": ObjectId,
+  "user_id": ObjectId,
+  "title": String,
+  "description": String,
+  "event_type": String,          // birthday / anniversary / holiday / custom / meeting / deadline
+  "event_date": Date,
+  "recurrence_type": String,     // none / yearly / monthly / weekly / daily
+  "recurrence_config": Object|null,
+  "importance_level": Number,    // 1..5
+  "tags": [String],
+  "location": String|null,
+  "is_all_day": Boolean,
+  "is_active": Boolean,
+  "last_triggered_at": Date|null,
+  "created_at": Date,
+  "updated_at": Date
+}
+```
+
+索引建议：
+
+- `{ user_id: 1, event_date: 1 }`
+- `{ user_id: 1, is_active: 1 }`
+
+## 4. reminders
+
+对应 `internal/models/reminder.go`。
+
+```jsonc
+{
+  "_id": ObjectId,
+  "event_id": ObjectId,
+  "user_id": ObjectId,
+  "advance_days": Number,        // >=0
+  "reminder_times": ["HH:MM"],  // 与 advance_days 组合
+  "absolute_times": [Date]? ,    // (可选) 直接指定绝对时间优先级更高
+  "reminder_type": "app"|"email"|"both",
+  "custom_message": String|null,
+  "is_active": Boolean,
+  "last_sent": Date|null,
+  "next_send": Date|null,
+  "created_at": Date,
+  "updated_at": Date
+}
+```
+
+索引（实际调度关键路径）：
+
+- `{ is_active: 1, next_send: 1 }` 供调度器扫描
+- `{ user_id: 1, event_id: 1 }`
+
+## 5. reports
+
+对应 `internal/models/report.go`。
+
+```jsonc
+{
+  "_id": ObjectId | String,
+  "userId": String,
+  "type": String,              // daily / weekly / monthly / custom
+  "period": String,            // 与 type 结合使用（当前实现中保留原字段名）
+  "title": String,
+  "content": String,
+  "polishedContent": String|null,
+  "tasks": [String],           // 关联任务ID列表
+  "statistics": {
+     "totalTasks": Number,
+     "completedTasks": Number,
+     "inProgressTasks": Number,
+     "overdueTasks": Number,
+     "completionRate": Number
   },
-  preferences: {
-    theme: String,            // 主题设置
-    notifications: {
-      email: Boolean,         // 邮件通知
-      push: Boolean           // 推送通知
-    },
-    language: String          // 语言设置
-  },
-  achievements: [{
-    id: String,               // 成就ID
-    name: String,             // 成就名称
-    description: String,      // 成就描述
-    earnedAt: Date            // 获得时间
-  }],
-  createdAt: Date,            // 创建时间
-  updatedAt: Date             // 更新时间
+  "createdAt": Date,
+  "updatedAt": Date
 }
 ```
 
-**索引**:
-- `_id`: 主键索引
-- `email`: 唯一索引
-- `username`: 唯一索引
-- `createdAt`: 普通索引
+索引建议：`{ userId: 1, createdAt: -1 }`。
 
-#### 2. 团队集合 (teams)
-存储团队信息。
+## 6. notifications
 
-**结构**:
-```javascript
+对应 `internal/models/notification.go`。
+
+```jsonc
 {
-  _id: ObjectId,              // 团队ID
-  name: String,               // 团队名称
-  description: String,        // 团队描述
-  avatar: String,             // 团队头像URL
-  members: [{                 // 团队成员
-    user: ObjectId,           // 用户ID (引用 users._id)
-    role: String,             // 角色 (owner, admin, member)
-    joinedAt: Date            // 加入时间
-  }],
-  createdAt: Date,            // 创建时间
-  updatedAt: Date             // 更新时间
+  "_id": ObjectId,
+  "user_id": ObjectId,
+  "type": String,            // reminder_sent / system / ...
+  "message": String,
+  "event_id": ObjectId|null,
+  "read_at": Date|null,
+  "created_at": Date,
+  "metadata": Object|null
 }
 ```
 
-**索引**:
-- `_id`: 主键索引
-- `name`: 普通索引
-- `members.user`: 普通索引
-- `createdAt`: 普通索引
+索引建议：
 
-#### 3. 任务集合 (tasks)
-存储所有任务信息。
+- `{ user_id: 1, created_at: -1 }`
+- `{ user_id: 1, read_at: 1 }`
 
-**结构**:
-```javascript
-{
-  _id: ObjectId,              // 任务ID
-  title: String,              // 任务标题
-  description: String,        // 任务描述
-  status: String,             // 任务状态 (created, in-progress, paused, completed, cancelled)
-  priority: String,           // 优先级 (low, medium, high)
-  assignee: ObjectId,         // 分配给 (引用 users._id)
-  team: ObjectId,             // 团队 (引用 teams._id, 可选)
-  createdBy: ObjectId,        // 创建者 (引用 users._id)
-  tags: [String],             // 标签
-  dueDate: Date,              // 截止日期
-  startDate: Date,            // 开始日期
-  completedDate: Date,        // 完成日期
-  estimatedHours: Number,     // 预估工时
-  actualHours: Number,        // 实际工时
-  attachments: [{             // 附件
-    name: String,             // 文件名
-    url: String,              // 文件URL
-    size: Number,             // 文件大小
-    type: String              // 文件类型
-  }],
-  createdAt: Date,            // 创建时间
-  updatedAt: Date             // 更新时间
-}
-```
+---
 
-**索引**:
-- `_id`: 主键索引
-- `status`: 普通索引
-- `priority`: 普通索引
-- `assignee`: 普通索引
-- `team`: 普通索引
-- `createdBy`: 普通索引
-- `dueDate`: 普通索引
-- `createdAt`: 普通索引
-- `updatedAt`: 普通索引
-- 组合索引: `{ status: 1, assignee: 1 }`
-- 组合索引: `{ priority: 1, dueDate: 1 }`
-- 组合索引: `{ team: 1, status: 1 }`
-
-#### 4. 任务历史记录集合 (task_histories)
-存储任务的所有变更历史，实现类似 Git 的变更追踪功能。
-
-**结构**:
-```javascript
-{
-  _id: ObjectId,              // 历史记录ID
-  taskId: ObjectId,           // 关联的任务ID (引用 tasks._id)
-  field: String,              // 变更的字段名
-  oldValue: Any,              // 变更前的值
-  newValue: Any,              // 变更后的值
-  changedBy: ObjectId,        // 变更者 (引用 users._id)
-  changeType: String,         // 变更类型 (status-change, update, assign, create, etc.)
-  comment: String,            // 变更说明 (可选)
-  timestamp: Date,            // 变更时间
-  snapshot: Object            // 任务快照 (可选，用于快速恢复)
-}
-```
-
-**索引**:
-- `_id`: 主键索引
-- `taskId`: 普通索引
-- `changedBy`: 普通索引
-- `changeType`: 普通索引
-- `timestamp`: 普通索引
-- 组合索引: `{ taskId: 1, timestamp: -1 }` (按任务和时间倒序查询)
-- 组合索引: `{ changedBy: 1, timestamp: -1 }` (按用户和时间倒序查询)
-
-#### 5. 用户统计集合 (user_statistics)
-存储用户统计数据。
-
-**结构**:
-```javascript
-{
-  _id: ObjectId,              // 用户ID (引用 users._id)
-  tasksCompleted: Number,     // 完成任务数
-  tasksCreated: Number,       // 创建任务数
-  completionRate: Number,     // 完成率
-  activeDays: [Date],         // 活跃日期
-  lastActive: Date,           // 最后活跃时间
-  achievements: [{            // 成就统计
-    id: String,               // 成就ID
-    count: Number             // 获得次数
-  }],
-  weeklyStats: [{             // 周统计
-    week: Date,               // 周开始日期
-    tasksCompleted: Number,   // 本周完成任务数
-    tasksCreated: Number      // 本周创建任务数
-  }],
-  createdAt: Date,            // 创建时间
-  updatedAt: Date             // 更新时间
-}
-```
-
-**索引**:
-- `_id`: 主键索引
-- `lastActive`: 普通索引
-- `createdAt`: 普通索引
-
-#### 6. 任务总结集合 (task_summaries)
-存储任务总结信息。
-
-**结构**:
-```javascript
-{
-  _id: ObjectId,              // 总结ID
-  userId: ObjectId,           // 用户ID (引用 users._id)
-  teamId: ObjectId,           // 团队ID (引用 teams._id, 可选)
-  period: String,             // 统计周期 (daily, weekly, monthly, custom)
-  startDate: Date,            // 开始日期
-  endDate: Date,              // 结束日期
-  tasksCompleted: Number,     // 完成任务数
-  tasksCreated: Number,       // 创建任务数
-  tasksCancelled: Number,     // 取消任务数
-  averageCompletionTime: Number, // 平均完成时间(小时)
-  completionRate: Number,     // 完成率
-  insights: [{                // 系统生成的洞察
-    type: String,             // 洞察类型
-    message: String,          // 洞察信息
-    severity: String          // 严重程度 (low, medium, high)
-  }],
-  generatedAt: Date           // 生成时间
-}
-```
-
-**索引**:
-- `_id`: 主键索引
-- `userId`: 普通索引
-- `teamId`: 普通索引
-- `period`: 普通索引
-- `generatedAt`: 普通索引
-- 组合索引: `{ userId: 1, period: 1, generatedAt: -1 }`
-
-## 数据关系图
+## 模型间关系 (精简 ER)
 
 ```mermaid
 erDiagram
-    USERS ||--o{ TASKS : creates
-    USERS ||--o{ TASKS : assigns
-    USERS ||--o{ TASK_HISTORIES : changes
-    USERS ||--|| USER_STATISTICS : has
-    USERS ||--o{ TASK_SUMMARIES : owns
-    TEAMS ||--o{ TASKS : contains
-    TEAMS ||--o{ USERS : members
-    TASKS ||--o{ TASK_HISTORIES : has
-
-    USERS {
-        ObjectId _id
-        String username
-        String email
-        String password
-        Object profile
-        Object preferences
-        Array achievements
-        Date createdAt
-        Date updatedAt
-    }
-    
-    TEAMS {
-        ObjectId _id
-        String name
-        String description
-        Array members
-        Date createdAt
-        Date updatedAt
-    }
-    
-    TASKS {
-        ObjectId _id
-        String title
-        String description
-        String status
-        String priority
-        ObjectId assignee
-        ObjectId team
-        ObjectId createdBy
-        Array tags
-        Date dueDate
-        Date startDate
-        Date completedDate
-        Number estimatedHours
-        Number actualHours
-        Array attachments
-        Date createdAt
-        Date updatedAt
-    }
-    
-    TASK_HISTORIES {
-        ObjectId _id
-        ObjectId taskId
-        String field
-        Any oldValue
-        Any newValue
-        ObjectId changedBy
-        String changeType
-        String comment
-        Date timestamp
-        Object snapshot
-    }
-    
-    USER_STATISTICS {
-        ObjectId _id
-        Number tasksCompleted
-        Number tasksCreated
-        Number completionRate
-        Array activeDays
-        Date lastActive
-        Array achievements
-        Array weeklyStats
-        Date createdAt
-        Date updatedAt
-    }
-    
-    TASK_SUMMARIES {
-        ObjectId _id
-        ObjectId userId
-        ObjectId teamId
-        String period
-        Date startDate
-        Date endDate
-        Number tasksCompleted
-        Number tasksCreated
-        Number tasksCancelled
-        Number averageCompletionTime
-        Number completionRate
-        Array insights
-        Date generatedAt
-    }
+  USERS ||--o{ TASKS : owns
+  USERS ||--o{ EVENTS : owns
+  USERS ||--o{ REMINDERS : configures
+  USERS ||--o{ REPORTS : generates
+  USERS ||--o{ NOTIFICATIONS : receives
+  EVENTS ||--o{ REMINDERS : has
+  EVENTS ||--o{ NOTIFICATIONS : triggers
+  REMINDERS ||--o{ NOTIFICATIONS : produces
 ```
 
-## 数据模型设计考虑
+## 设计要点对齐
 
-### 1. 任务生命周期设计
-- 任务状态采用枚举类型，确保数据一致性
-- 状态转换通过历史记录追踪，便于回溯和审计
-- 每个状态变更都会在 [task_histories](file:///Volumes/M20/code/docs/todoIng/docs/database-design.md) 集合中创建记录
+- 去除未实现的历史 / 团队 / 统计冗余集合，保持核心聚焦。
+- Reminders 通过 `next_send` 精确调度，绝对时间数组用于一次性或临时测试场景。
+- Events 支持基础循环规则，`GetNextOccurrence` 负责推算下一次执行时间。
+- Tasks 暂不存储历史快照，评论内嵌数组满足轻量协作。
+- Reports 为衍生数据，按需生成，可做缓存层，不回写统计集合。
+- Notifications 既持久化也作为 SSE 推送来源，以简化实时链路。
 
-### 2. 历史记录设计
-- 采用独立集合存储历史记录，避免任务文档过大
-- 每次任务更新都会在历史记录中创建一条或多条记录
-- 支持快照功能，可以保存任务在特定时间点的完整状态
-- 提供变更类型字段，便于筛选和分析不同类型的变更
+## 一致性与调度
 
-### 3. 团队设计
-- 团队成员以内嵌数组形式存储，便于查询团队成员
-- 支持多种角色类型，便于权限管理
-- 任务可以关联到团队，支持团队协作
+- 调度只写 reminders；事件更新时间尚未自动批量刷新相关提醒 (列为后续优化)。
+- 所有写操作单文档，无多文档事务需求（当前模型简化）。
 
-### 4. 用户扩展设计
-- 用户信息分为基本信息、个人资料和偏好设置，结构清晰
-- 支持成就系统，增强用户粘性
-- 用户统计独立存储，避免频繁更新用户文档
+## 备份与运维（当前简单策略）
 
-### 5. 性能优化考虑
-- 为常用查询字段创建索引，提高查询效率
-- 使用组合索引优化复杂查询
-- 历史记录按时间倒序索引，便于获取最新变更
-- 任务和历史记录分离，避免单个文档过大
-- 统计数据独立存储，避免影响主业务数据性能
+- 开发/测试环境：手动或容器卷备份。
+- 生产规划：建议使用 mongodump 周期备份 + oplog 增量；尚未在仓库脚本化。
 
-### 6. 扩展性考虑
-- 标签字段使用数组类型，支持灵活的标签系统
-- 快照字段为可选字段，为将来的任务恢复功能预留
-- 变更说明字段支持添加备注信息
-- 变更类型字段便于扩展新的变更类型
-- 附件字段支持任务相关文件管理
+## 未来扩展 (与优化计划一致)
 
-## 数据一致性保证
+- 增加 Redis 以缓存统一聚合 / 提醒即将到来列表。
+- 事件更新触发提醒批量重算。
+- 任务历史审计集合（按需引入）。
+- 指标与 tracing 扩展 (Prometheus + OpenTelemetry 完整链路)。
 
-### 1. 事务处理
-- 任务更新和历史记录创建在同一个事务中完成
-- 团队成员添加和相关权限更新在事务中完成
-- 确保数据一致性，避免出现任务更新了但历史记录未创建的情况
+---
 
-### 2. 数据验证
-- 应用层对所有输入数据进行验证
-- 数据库层对关键字段添加验证规则
-- 状态转换需要符合预定义的状态机规则
-
-## 数据备份和恢复
-
-### 1. 备份策略
-- 每日全量备份
-- 每小时增量备份
-- 历史记录永久保存
-
-### 2. 恢复机制
-- 支持基于时间点的数据恢复
-- 支持基于特定历史记录的任务状态恢复
-- 提供数据导出功能
-
-## 数据清理策略
-
-### 1. 软删除
-- 任务删除采用软删除方式，保留历史记录
-- 提供数据归档功能
-
-### 2. 历史记录保留
-- 任务历史记录永久保留
-- 提供历史记录清理接口（仅限管理员）
-
-### 3. 统计数据归档
-- 定期归档旧的统计数据
-- 保留关键统计数据用于长期分析
+最后更新：同步至当前代码模型。

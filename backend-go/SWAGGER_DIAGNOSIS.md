@@ -21,7 +21,7 @@ Swagger文档只显示了3个认证相关接口，缺少任务管理、报表和
 ```go
 // 在main.go中添加
 import (
-    _ "github.com/axfinn/todoIng/backend-go/internal/api" // 强制导入所有handlers
+    _ "github.com/axfinn/todoIngPlus/backend-go/internal/api" // 强制导入所有handlers
 )
 
 // 在init函数中引用类型，确保swag能发现

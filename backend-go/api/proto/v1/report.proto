@@ -2,11 +2,12 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
 import "common.proto";
 import "task.proto";
+import "event.proto";
 
 // 报表类型枚举
 enum ReportType {
@@ -21,12 +22,15 @@ message Report {
   string id = 1;
   string title = 2;
   ReportType type = 3;
-  google.protobuf.Timestamp start_date = 4;
-  google.protobuf.Timestamp end_date = 5;
+  google.protobuf.Timestamp start_date = 4; // 可用 created_at 替代旧结构
+  google.protobuf.Timestamp end_date = 5;   // 可用 updated_at 替代
   string user_id = 6;
   google.protobuf.Timestamp created_at = 7;
   repeated Task tasks = 8;
   ReportStats stats = 9;
+  string period = 10; // 新增 对齐后端 Period
+  string content = 11; // 新增 原始内容
+  string polished_content = 12; // 新增 精炼内容
 }
 
 // 报表统计信息
@@ -36,6 +40,7 @@ message ReportStats {
   int32 pending_tasks = 3;
   int32 in_progress_tasks = 4;
   double completion_rate = 5;
+  int32 overdue_tasks = 6; // 新增 与后端 Statistics.OverdueTasks
 }
 
 // 生成报表请求
@@ -99,16 +104,12 @@ message ExportReportResponse {
 service ReportService {
   // 生成报表
   rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse);
-  
   // 获取报表列表
   rpc GetReports(GetReportsRequest) returns (GetReportsResponse);
-  
   // 获取报表详情
   rpc GetReport(GetReportRequest) returns (GetReportResponse);
-  
   // 删除报表
   rpc DeleteReport(DeleteReportRequest) returns (Response);
-  
   // 导出报表
   rpc ExportReport(ExportReportRequest) returns (ExportReportResponse);
 }

@@ -246,3 +246,14 @@ TODO.txt
 # 本地脚本
 local-*.sh
 dev-*.sh
+
+# ========================================
+# 额外补充：防止将 Go 构建产物放进源目录被提交
+# 若使用 `go build -o cmd/api/api ./cmd/api` 这类输出会出现在源码目录
+# 统一忽略所有 cmd 子目录下无扩展名的潜在二进制（保留 go 源码 *.go）
+# 以及历史误加入的 server-test 等
+cmd/**/api
+cmd/**/grpc
+cmd/**/server
+server-test
+# 若需要保留某些脚本/模板，可使用 ! 前缀显式取消忽略

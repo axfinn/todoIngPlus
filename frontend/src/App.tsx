@@ -350,7 +350,7 @@ const App: React.FC = () => {
                   <div className="mt-5">
                     <div className="d-flex align-items-center justify-content-center mb-3">
                       <i className="bi bi-github me-2"></i>
-                      <a href="https://github.com/axfinn/todoIng" target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                      <a href="https://github.com/axfinn/todoIngPlus" target="_blank" rel="noopener noreferrer" className="text-decoration-none">
                         {t('github.fork')}
                       </a>
                     </div>
@@ -364,7 +364,7 @@ const App: React.FC = () => {
                       <div className="d-flex justify-content-center gap-3">
                         <button 
                           className="btn btn-outline-dark btn-sm d-flex align-items-center"
-                          onClick={() => window.open('https://github.com/axfinn/todoIng', '_blank')}
+                          onClick={() => window.open('https://github.com/axfinn/todoIngPlus', '_blank')}
                         >
                           <i className="bi bi-star-fill me-1"></i> 
                           <span>{t('github.star')}</span>
@@ -416,7 +416,7 @@ const App: React.FC = () => {
           <div className="text-center text-muted">
             <div className="d-flex align-items-center justify-content-center">
               <i className="bi bi-github me-2"></i>
-              <a href="https://github.com/axfinn/todoIng" target="_blank" rel="noopener noreferrer" className="text-decoration-none text-muted">
+              <a href="https://github.com/axfinn/todoIngPlus" target="_blank" rel="noopener noreferrer" className="text-decoration-none text-muted">
                 {t('github.fork')}
               </a>
             </div>

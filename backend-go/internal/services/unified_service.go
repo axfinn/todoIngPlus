@@ -13,7 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 )
 
 // UnifiedService 聚合服务
@@ -158,8 +159,10 @@ func (s *UnifiedService) GetUpcoming(ctx context.Context, userID primitive.Objec
 	now := time.Now()
 	end := now.Add(time.Duration(hours) * time.Hour)
 
-	eventSvc := NewEventService(s.db)
-	reminderSvc := NewReminderService(s.db)
+	eventRepo := repository.NewEventRepository(s.db)
+	reminderRepo := repository.NewReminderRepository(s.db)
+	eventSvc := NewEventService(eventRepo)
+	reminderSvc := NewReminderService(reminderRepo)
 	taskSortSvc := NewTaskSortService(s.db)
 
 	var eventsErr, remindersErr, priorityErr, normalTasksErr error
@@ -329,7 +332,10 @@ func (s *UnifiedService) GetCalendar(ctx context.Context, userID primitive.Objec
 	end := start.AddDate(0, 1, 0)
 	daysMap := make(map[string][]models.UnifiedCalendarItem)
 
-	eventSvc := NewEventService(s.db)
+	// 使用仓储+服务
+	eventRepo := repository.NewEventRepository(s.db)
+	reminderRepo := repository.NewReminderRepository(s.db)
+	eventSvc := NewEventService(eventRepo)
 	events, _ := eventSvc.GetCalendarEvents(ctx, userID, year, month)
 	for day, evs := range events {
 		for _, ev := range evs {
@@ -338,7 +344,7 @@ func (s *UnifiedService) GetCalendar(ctx context.Context, userID primitive.Objec
 	}
 
 	// 提醒: 取 next_send 落在该月范围内
-	reminderSvc := NewReminderService(s.db)
+	reminderSvc := NewReminderService(reminderRepo)
 	reminders, _ := reminderSvc.GetUpcomingReminders(ctx, userID, 24*31) // 先取一月内的所有即将提醒
 	for _, r := range reminders {
 		if r.ReminderAt.IsZero() {

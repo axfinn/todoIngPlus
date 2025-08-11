@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
 	"github.com/stretchr/testify/require"
 )
 

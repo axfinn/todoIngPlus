@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/observability"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/observability"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

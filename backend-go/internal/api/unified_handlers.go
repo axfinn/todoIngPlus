@@ -10,8 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
-	"github.com/axfinn/todoIng/backend-go/internal/services"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 )
 
 type UnifiedDeps struct{ DB *mongo.Database }

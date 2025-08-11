@@ -1,346 +1,123 @@
-# 📐 TodoIng 系统架构设计
+# TodoIng 架构概览 (当前 dev 实现)
 
-## 🏗️ 整体架构
+> 本文档同步至最新代码：引入了 Event / Reminder 专用 **Repository 层**，Service 变为薄封装；Reminder 支持 Preview / Immediate Test；统一聚合 (Unified) 增强调试输出；Proto 成为接口单一真实来源 (SSOT)。
 
-```mermaid
-graph TB
-    subgraph "前端层 Frontend"
-        A[React + TypeScript]
-        B[Redux Toolkit]
-        C[React Router]
-        D[Axios HTTP Client]
-    end
-    
-    subgraph "API 网关层 Gateway"
-        E[Nginx Reverse Proxy]
-        F[SSL/TLS 终端]
-    end
-    
-    subgraph "后端服务层 Backend Services"
-        G[Go HTTP Server]
-        H[gRPC Server]
-        I[JWT 认证中间件]
-        J[邮件服务]
-    end
-    
-    subgraph "数据层 Data Layer"
-        K[MongoDB]
-        L[Redis Cache]
-        M[文件存储]
-    end
-    
-    A --> E
-    B --> A
-    C --> A
-    D --> A
-    E --> G
-    E --> H
-    F --> E
-    G --> I
-    G --> J
-    H --> I
-    I --> K
-    G --> L
-    H --> K
-    J --> M
-```
-
-## 🔄 数据流图
+## 1. 总览
 
 ```mermaid
-sequenceDiagram
-    participant U as 用户
-    participant F as Frontend
-    participant N as Nginx
-    participant G as Go Backend
-    participant M as MongoDB
-    participant R as Redis
-    
-    U->>F: 用户操作
-    F->>N: HTTP/HTTPS 请求
-    N->>G: 转发请求
-    G->>G: JWT 验证
-    G->>R: 检查缓存
-    alt 缓存命中
-        R-->>G: 返回缓存数据
-    else 缓存未命中
-        G->>M: 查询数据库
-        M-->>G: 返回数据
-        G->>R: 更新缓存
-    end
-    G-->>N: 返回响应
-    N-->>F: 转发响应
-    F-->>U: 更新界面
+flowchart LR
+  subgraph Frontend
+    FE[React + TS\nVite + RTK]
+  end
+  subgraph Backend(Golang Monolith)
+    API[HTTP / gRPC Gateway]
+    AUTH[Auth/JWT]
+    TASK[Tasks]
+    EVENT[Events\nRepo+Svc]
+    REM[Reminders\nRepo+Scheduler]
+    REP[Reports]
+    UNI[Unified\nUpcoming/Calendar]
+    NOTI[Notifications\nSSE Hub]
+    OBS[Observability]
+  end
+  DB[(MongoDB)]
+  EMAIL[(SMTP)]
+
+  FE -->|REST / JSON| API
+  FE <-->|gRPC (optional)| API
+  API --> EVENT
+  API --> REM
+  API --> TASK
+  API --> REP
+  API --> UNI
+  API --> NOTI
+  EVENT --> DB
+  REM --> DB
+  TASK --> DB
+  REP --> DB
+  UNI --> DB
+  AUTH --> DB
+  REM --> EMAIL
+  FE <-->|SSE| NOTI
 ```
 
-## 🏢 服务架构
+## 2. 分层与职责
 
-```mermaid
-graph LR
-    subgraph "微服务架构"
-        subgraph "核心服务 Core Services"
-            A1[用户服务 User Service]
-            A2[任务服务 Task Service]
-            A3[认证服务 Auth Service]
-        end
-        
-        subgraph "扩展服务 Extended Services"
-            B1[邮件服务 Email Service]
-            B2[报告服务 Report Service]
-            B3[AI 服务 AI Service]
-        end
-        
-        subgraph "基础设施 Infrastructure"
-            C1[数据库 MongoDB]
-            C2[缓存 Redis]
-            C3[消息队列 Message Queue]
-        end
-    end
-    
-    A1 --> C1
-    A2 --> C1
-    A3 --> C2
-    B1 --> C3
-    B2 --> A2
-    B3 --> B2
-```
+| 层/模块 | 状态 | 说明 |
+|---------|------|------|
+| Handlers (`internal/api`) | ✅ | 参数解析 / 鉴权 / 调用 Service / 输出 DTO |
+| Services (`internal/services`) | ✅ 精简 | 事件 & 提醒：调用 Repository；其余仍直接 Mongo （逐步迁移） |
+| Repositories (`internal/repository`) | ✅ 部分 | 已实现 `EventRepository`, `ReminderRepository`（含复杂推进 / 聚合 / 预览 / 级联逻辑） |
+| Models (`internal/models`) | ✅ | 领域模型 + 计算函数 (eg. `CalculateNextSendTime`) |
+| Scheduler (`reminder_scheduler.go`) | ✅ | 每分钟扫描 `next_send`；使用仓储重新计算/标记发送 |
+| Unified (`unified_service.go`) | ✅ | 汇总 tasks/events/reminders；新增 debug 输出窗口过滤信息 |
+| gRPC (`internal/grpc`) | ✅ | 与 HTTP 共用 Service/Repository；Proto 为单一真实来源 |
 
-## 📊 组件关系图
+迁移策略：优先将“含复杂 Mongo 聚合 / 级联写”下沉至 Repository；简单 CRUD 可保持在 Service 直到需要扩展。
 
-```mermaid
-classDiagram
-    class Frontend {
-        +React Components
-        +Redux Store
-        +API Client
-        +Router
-    }
-    
-    class APIGateway {
-        +Nginx Config
-        +SSL Termination
-        +Load Balancing
-        +Rate Limiting
-    }
-    
-    class GoBackend {
-        +HTTP Handlers
-        +gRPC Services
-        +Middleware
-        +Business Logic
-    }
-    
-    class Database {
-        +MongoDB Collections
-        +Indexes
-        +Aggregation Pipelines
-    }
-    
-    class Cache {
-        +Redis Sessions
-        +API Cache
-        +Rate Limit Store
-    }
-    
-    Frontend --> APIGateway : HTTPS Requests
-    APIGateway --> GoBackend : Proxy
-    GoBackend --> Database : Data Operations
-    GoBackend --> Cache : Session/Cache
-```
+## 3. Repository 要点
 
-## 🌐 部署架构
+### EventRepository
 
-```mermaid
-graph TB
-    subgraph "生产环境 Production"
-        subgraph "负载均衡层"
-            LB[Load Balancer]
-        end
-        
-        subgraph "Web 层"
-            W1[Web Server 1]
-            W2[Web Server 2]
-        end
-        
-        subgraph "应用层"
-            A1[App Server 1]
-            A2[App Server 2]
-            A3[App Server 3]
-        end
-        
-        subgraph "数据层"
-            DB1[MongoDB Primary]
-            DB2[MongoDB Secondary]
-            RD[Redis Cluster]
-        end
-    end
-    
-    LB --> W1
-    LB --> W2
-    W1 --> A1
-    W1 --> A2
-    W2 --> A2
-    W2 --> A3
-    A1 --> DB1
-    A2 --> DB1
-    A3 --> DB1
-    DB1 --> DB2
-    A1 --> RD
-    A2 --> RD
-    A3 --> RD
-```
+- 提供：`Insert / Find / UpdateFields / Delete / ListPaged / ListUpcoming / CalendarRange / Search`
+- 拓展：`Advance` (推进循环+写系统时间线+异步重算相关 Reminders)、`ListStartingWindow`、`MarkTriggered`
 
-## 🔐 安全架构
+### ReminderRepository
 
-```mermaid
-graph TD
-    subgraph "安全层级 Security Layers"
-        L1[网络安全 Network Security]
-        L2[应用安全 Application Security]
-        L3[数据安全 Data Security]
-        L4[访问控制 Access Control]
-    end
-    
-    subgraph "安全组件 Security Components"
-        S1[SSL/TLS 加密]
-        S2[JWT 认证]
-        S3[验证码系统]
-        S4[邮箱验证]
-        S5[密码加密]
-        S6[数据库加密]
-        S7[API 限流]
-        S8[CORS 配置]
-    end
-    
-    L1 --> S1
-    L1 --> S7
-    L1 --> S8
-    L2 --> S2
-    L2 --> S3
-    L2 --> S4
-    L3 --> S5
-    L3 --> S6
-    L4 --> S2
-```
+- 提供：`Insert / GetWithEvent / UpdateFields(recomputeNext) / Delete / ListPagedWithEvent / ListSimple / Upcoming / Pending`
+- 调度辅助：`ToggleActive / Snooze / MarkSent`
+- 特殊：`CreateImmediateTest`（测试提醒）、`Preview`（不落库计算 next_send + 文本）
 
-## 📦 模块依赖图
+Service 不再直接使用 `bson`，仅组装更新字段 map。
 
-```mermaid
-graph TD
-    subgraph "前端模块 Frontend Modules"
-        F1[认证模块]
-        F2[任务管理模块]
-        F3[报告模块]
-        F4[用户设置模块]
-        F5[公共组件模块]
-    end
-    
-    subgraph "后端模块 Backend Modules"
-        B1[认证中间件]
-        B2[用户服务]
-        B3[任务服务]
-        B4[邮件服务]
-        B5[报告服务]
-        B6[公共工具模块]
-    end
-    
-    F1 --> B1
-    F1 --> B2
-    F2 --> B3
-    F3 --> B5
-    F4 --> B2
-    F5 --> B6
-    
-    B1 --> B6
-    B2 --> B6
-    B3 --> B6
-    B4 --> B6
-    B5 --> B6
-```
+## 4. 接口单一真实来源 (SSOT)
 
-## 🔄 开发流程图
+- 所有对外 gRPC + HTTP (grpc-gateway) 接口由 `api/proto/v1/*.proto` 定义
+- 生成：`make proto-all` => `pkg/api/v1/*` + `docs/swagger/todoing.swagger.json`
+- OpenAPI 前端直接消费；手写 Swagger 片段已废弃
 
-```mermaid
-gitgraph
-    commit id: "初始化项目"
-    branch dev
-    checkout dev
-    commit id: "Golang 后端重构"
-    commit id: "移除 Node.js 依赖"
-    branch feature/auth
-    checkout feature/auth
-    commit id: "实现 JWT 认证"
-    commit id: "添加邮箱验证"
-    checkout dev
-    merge feature/auth
-    branch feature/tasks
-    checkout feature/tasks
-    commit id: "任务 CRUD 操作"
-    commit id: "任务历史追踪"
-    checkout dev
-    merge feature/tasks
-    branch feature/reports
-    checkout feature/reports
-    commit id: "报告生成功能"
-    commit id: "AI 集成"
-    checkout dev
-    merge feature/reports
-    checkout main
-    merge dev
-    commit id: "v2.0.0 发布"
-```
+## 5. 统一聚合 (Unified)
 
-## 🚀 技术选型理由
+功能：`/api/unified/upcoming` & `/api/unified/calendar`
 
-```mermaid
-mindmap
-  root((技术选型))
-    (前端)
-      React
-        ::icon(fa fa-react)
-        组件化开发
-        生态成熟
-        TypeScript 支持
-      Redux Toolkit
-        状态管理
-        开发工具完善
-        异步处理
-      Vite
-        快速构建
-        热更新
-        ES 模块
-    (后端)
-      Golang
-        ::icon(fa fa-code)
-        高性能
-        并发处理
-        类型安全
-      Gin/Echo
-        轻量级框架
-        中间件丰富
-        易于测试
-      gRPC
-        高性能通信
-        类型安全
-        跨语言支持
-    (数据库)
-      MongoDB
-        ::icon(fa fa-database)
-        文档型数据库
-        水平扩展
-        JSON 原生支持
-      Redis
-        高性能缓存
-        数据结构丰富
-        持久化支持
-```
+- Upcoming：聚合 events (含循环下一次实例化)、reminders (active + 未来窗口)、tasks（带优先任务 + 普通任务日期解析）
+- 支持 sources 过滤、limit 限制；context 里设置 `unifiedDebug` 时返回调试结构（窗口过滤器、统计）
+- Calendar：按日 bucket events/reminders/tasks
 
-## 📈 性能指标
+## 6. 提醒扩展
 
-```mermaid
-xychart-beta
-    title "系统性能指标"
-    x-axis [响应时间, 并发用户, 数据吞吐, 可用性]
-    y-axis "指标值" 0 --> 100
-    bar [95, 80, 90, 99.9]
-```
+新增能力：
+
+- Preview：POST `/api/reminders/preview` 调用 Repository 计算 next_send 与描述文本
+- Immediate Test：POST `/api/reminders/test` 创建临时提醒并可即时尝试发送邮件
+- Scheduler：使用 `Pending()` + `MarkSent()`；发送后重算 next_send（循环事件未来扩展）
+
+## 7. 时间线与推进
+
+- 事件创建 / 推进写入 `event_comments` 系统记录（异步 goroutine）
+- `Advance` 同时：推进日期或关闭事件 + 重算相关提醒 next_send + 写系统 comment
+
+## 8. 渐进式重构现状
+
+| 领域 | Mongo 直接访问 | Repository 封装 | 说明 |
+|------|----------------|------------------|------|
+| Events | ❌ | ✅ | 全量迁移完成 |
+| Reminders | ❌ | ✅ | 全量迁移 + Preview/Test |
+| Tasks | ✅ | ❌ | 后续按需引入（排序/统计逻辑较少） |
+| Reports / Dashboard | ✅ | ❌ | 聚合简单，暂不抽象 |
+| Notifications | ✅ | ❌ | 直接 collection 写入足够 |
+
+## 9. 指标 / 观察点 (规划)
+
+- 索引建议：`events(user_id,event_date,is_active)`, `reminders(is_active,next_send)`, `reminders(user_id,created_at)`
+- 计划增加：Prometheus exporter / metrics 路由 / repository 层 instrumentation
+
+## 10. 未来迭代
+
+- 统一 UserRepository（当前 scheduler/测试提醒仍直接查 `users`）
+- 任务 & 报表 Repository 化 / 查询缓存
+- 更丰富的事件循环 (cron-like) + reminder next_send 智能批量重算
+- SSE -> 可插拔 WebSocket 层
+
+---
+最后更新：自动化重写 (包含 repository+preview 变更)

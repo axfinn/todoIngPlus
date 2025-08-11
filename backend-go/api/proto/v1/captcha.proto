@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "common.proto";
 

@@ -19,8 +19,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
-	"github.com/axfinn/todoIng/backend-go/internal/services"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 )
 
 // ReminderHandler 提醒处理器
@@ -31,10 +32,7 @@ type ReminderHandler struct {
 
 // NewReminderHandler 创建提醒处理器
 func NewReminderHandler(db *mongo.Database) *ReminderHandler {
-	return &ReminderHandler{
-		reminderService: services.NewReminderService(db),
-		db:              db,
-	}
+	return &ReminderHandler{reminderService: services.NewReminderService(repository.NewReminderRepository(db)), db: db}
 }
 
 // CreateReminder 创建提醒

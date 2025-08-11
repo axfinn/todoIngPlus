@@ -1,0 +1,3931 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "auth.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AuthService"
+    },
+    {
+      "name": "CaptchaService"
+    },
+    {
+      "name": "DashboardService"
+    },
+    {
+      "name": "EventService"
+    },
+    {
+      "name": "NotificationService"
+    },
+    {
+      "name": "ReminderService"
+    },
+    {
+      "name": "ReportService"
+    },
+    {
+      "name": "TaskService"
+    },
+    {
+      "name": "UnifiedService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/todoing.api.v1.AuthService/EmailCodeLogin": {
+      "post": {
+        "summary": "（可选）旧邮箱验证码登录接口 - Deprecated",
+        "operationId": "AuthService_EmailCodeLogin",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1LoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1EmailCodeLoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/todoing.api.v1.AuthService/Login": {
+      "post": {
+        "summary": "用户登录（密码或邮箱验证码）",
+        "operationId": "AuthService_Login",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1LoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1LoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/todoing.api.v1.AuthService/Register": {
+      "post": {
+        "summary": "用户注册",
+        "operationId": "AuthService_Register",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RegisterResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1RegisterRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/todoing.api.v1.AuthService/SendLoginEmailCode": {
+      "post": {
+        "summary": "发送登录邮箱验证码",
+        "operationId": "AuthService_SendLoginEmailCode",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SendLoginEmailCodeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SendLoginEmailCodeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/todoing.api.v1.AuthService/VerifyToken": {
+      "post": {
+        "summary": "验证令牌",
+        "operationId": "AuthService_VerifyToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1VerifyTokenResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1VerifyTokenRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/todoing.api.v1.CaptchaService/GetCaptcha": {
+      "post": {
+        "summary": "获取验证码",
+        "operationId": "CaptchaService_GetCaptcha",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetCaptchaResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "暂时无需参数",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetCaptchaRequest"
+            }
+          }
+        ],
+        "tags": [
+          "CaptchaService"
+        ]
+      }
+    },
+    "/todoing.api.v1.DashboardService/GetDashboardData": {
+      "post": {
+        "operationId": "DashboardService_GetDashboardData",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetDashboardDataResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetDashboardDataRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DashboardService"
+        ]
+      }
+    },
+    "/todoing.api.v1.DashboardService/GetPriorityTasks": {
+      "post": {
+        "summary": "TaskSortConfig 复用 TaskService 的 RPC（避免重复）",
+        "operationId": "DashboardService_GetPriorityTasks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetPriorityTasksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetPriorityTasksRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DashboardService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/AddEventComment": {
+      "post": {
+        "operationId": "EventService_AddEventComment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AddEventCommentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AddEventCommentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/CreateEvent": {
+      "post": {
+        "operationId": "EventService_CreateEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateEventRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/DeleteEvent": {
+      "post": {
+        "operationId": "EventService_DeleteEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteEventRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/DeleteEventComment": {
+      "post": {
+        "operationId": "EventService_DeleteEventComment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteEventCommentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/GetCalendarEvents": {
+      "post": {
+        "operationId": "EventService_GetCalendarEvents",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetCalendarEventsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetCalendarEventsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/GetEvent": {
+      "post": {
+        "operationId": "EventService_GetEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetEventRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/GetUpcomingEvents": {
+      "post": {
+        "operationId": "EventService_GetUpcomingEvents",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetUpcomingEventsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetUpcomingEventsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/ListEventTimeline": {
+      "post": {
+        "operationId": "EventService_ListEventTimeline",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListEventTimelineResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListEventTimelineRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/ListEvents": {
+      "post": {
+        "operationId": "EventService_ListEvents",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListEventsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListEventsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/UpdateEvent": {
+      "post": {
+        "operationId": "EventService_UpdateEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateEventRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.EventService/UpdateEventComment": {
+      "post": {
+        "operationId": "EventService_UpdateEventComment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateEventCommentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateEventCommentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EventService"
+        ]
+      }
+    },
+    "/todoing.api.v1.NotificationService/CreateNotification": {
+      "post": {
+        "operationId": "NotificationService_CreateNotification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateNotificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateNotificationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/todoing.api.v1.NotificationService/ListNotifications": {
+      "post": {
+        "operationId": "NotificationService_ListNotifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListNotificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListNotificationsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/todoing.api.v1.NotificationService/MarkAllNotificationsRead": {
+      "post": {
+        "operationId": "NotificationService_MarkAllNotificationsRead",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1MarkAllNotificationsReadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1MarkAllNotificationsReadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/todoing.api.v1.NotificationService/MarkNotificationRead": {
+      "post": {
+        "operationId": "NotificationService_MarkNotificationRead",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1MarkNotificationReadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1MarkNotificationReadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/CreateReminder": {
+      "post": {
+        "operationId": "ReminderService_CreateReminder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateReminderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateReminderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/CreateTestReminder": {
+      "post": {
+        "operationId": "ReminderService_CreateTestReminder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateTestReminderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateTestReminderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/DeleteReminder": {
+      "post": {
+        "operationId": "ReminderService_DeleteReminder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteReminderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/GetReminder": {
+      "post": {
+        "operationId": "ReminderService_GetReminder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetReminderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetReminderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/GetUpcomingReminders": {
+      "post": {
+        "operationId": "ReminderService_GetUpcomingReminders",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetUpcomingRemindersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetUpcomingRemindersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/ListReminders": {
+      "post": {
+        "operationId": "ReminderService_ListReminders",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListRemindersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListRemindersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/ListSimpleReminders": {
+      "post": {
+        "operationId": "ReminderService_ListSimpleReminders",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListSimpleRemindersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ListSimpleRemindersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/PreviewReminder": {
+      "post": {
+        "operationId": "ReminderService_PreviewReminder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PreviewReminderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1PreviewReminderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/SnoozeReminder": {
+      "post": {
+        "operationId": "ReminderService_SnoozeReminder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SnoozeReminderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SnoozeReminderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/ToggleReminderActive": {
+      "post": {
+        "operationId": "ReminderService_ToggleReminderActive",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ToggleReminderActiveResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ToggleReminderActiveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReminderService/UpdateReminder": {
+      "post": {
+        "operationId": "ReminderService_UpdateReminder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateReminderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateReminderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReminderService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReportService/DeleteReport": {
+      "post": {
+        "summary": "删除报表",
+        "operationId": "ReportService_DeleteReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteReportRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReportService/ExportReport": {
+      "post": {
+        "summary": "导出报表",
+        "operationId": "ReportService_ExportReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ExportReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ExportReportRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReportService/GenerateReport": {
+      "post": {
+        "summary": "生成报表",
+        "operationId": "ReportService_GenerateReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GenerateReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GenerateReportRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReportService/GetReport": {
+      "post": {
+        "summary": "获取报表详情",
+        "operationId": "ReportService_GetReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetReportRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/todoing.api.v1.ReportService/GetReports": {
+      "post": {
+        "summary": "获取报表列表",
+        "operationId": "ReportService_GetReports",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetReportsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetReportsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/todoing.api.v1.TaskService/CreateTask": {
+      "post": {
+        "summary": "创建任务",
+        "operationId": "TaskService_CreateTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TaskService"
+        ]
+      }
+    },
+    "/todoing.api.v1.TaskService/DeleteTask": {
+      "post": {
+        "summary": "删除任务",
+        "operationId": "TaskService_DeleteTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1Response"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TaskService"
+        ]
+      }
+    },
+    "/todoing.api.v1.TaskService/GetTask": {
+      "post": {
+        "summary": "获取任务详情",
+        "operationId": "TaskService_GetTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TaskService"
+        ]
+      }
+    },
+    "/todoing.api.v1.TaskService/GetTaskSortConfig": {
+      "post": {
+        "summary": "排序配置",
+        "operationId": "TaskService_GetTaskSortConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetTaskSortConfigResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetTaskSortConfigRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TaskService"
+        ]
+      }
+    },
+    "/todoing.api.v1.TaskService/GetTasks": {
+      "post": {
+        "summary": "获取任务列表",
+        "operationId": "TaskService_GetTasks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetTasksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetTasksRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TaskService"
+        ]
+      }
+    },
+    "/todoing.api.v1.TaskService/UpdateTask": {
+      "post": {
+        "summary": "更新任务",
+        "operationId": "TaskService_UpdateTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TaskService"
+        ]
+      }
+    },
+    "/todoing.api.v1.TaskService/UpdateTaskSortConfig": {
+      "post": {
+        "operationId": "TaskService_UpdateTaskSortConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateTaskSortConfigResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateTaskSortConfigRequest"
+            }
+          }
+        ],
+        "tags": [
+          "TaskService"
+        ]
+      }
+    },
+    "/todoing.api.v1.UnifiedService/GetUnifiedCalendar": {
+      "post": {
+        "operationId": "UnifiedService_GetUnifiedCalendar",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetUnifiedCalendarResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetUnifiedCalendarRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UnifiedService"
+        ]
+      }
+    },
+    "/todoing.api.v1.UnifiedService/GetUnifiedUpcoming": {
+      "post": {
+        "operationId": "UnifiedService_GetUnifiedUpcoming",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetUnifiedUpcomingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetUnifiedUpcomingRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UnifiedService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n\nExample 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\nExample 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\n\nJSON\n\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1AddEventCommentRequest": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "v1AddEventCommentResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "comment": {
+          "$ref": "#/definitions/v1EventComment"
+        }
+      }
+    },
+    "v1CalendarDayEvents": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        }
+      }
+    },
+    "v1Captcha": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "imageData": {
+          "type": "string",
+          "title": "base64编码的图片数据"
+        }
+      },
+      "title": "验证码模型"
+    },
+    "v1CreateEventRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "eventType": {
+          "$ref": "#/definitions/v1EventType"
+        },
+        "eventDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "recurrenceType": {
+          "$ref": "#/definitions/v1RecurrenceType",
+          "title": "可选"
+        },
+        "recurrenceConfig": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "importanceLevel": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        },
+        "isAllDay": {
+          "type": "boolean"
+        }
+      },
+      "title": "创建事件"
+    },
+    "v1CreateEventResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      }
+    },
+    "v1CreateNotificationRequest": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        }
+      }
+    },
+    "v1CreateNotificationResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "notification": {
+          "$ref": "#/definitions/v1Notification"
+        }
+      }
+    },
+    "v1CreateReminderRequest": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string"
+        },
+        "advanceDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminderTimes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "absoluteTimes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": "二选一: 与 times 互斥"
+        },
+        "reminderType": {
+          "$ref": "#/definitions/v1ReminderType"
+        },
+        "customMessage": {
+          "type": "string"
+        }
+      },
+      "title": "创建"
+    },
+    "v1CreateReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        }
+      }
+    },
+    "v1CreateTaskRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1TaskStatus"
+        },
+        "priority": {
+          "$ref": "#/definitions/v1TaskPriority"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "title": "使用统一字段"
+        },
+        "scheduledDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "assignee": {
+          "type": "string"
+        }
+      },
+      "title": "创建任务请求"
+    },
+    "v1CreateTaskResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        }
+      },
+      "title": "创建任务响应"
+    },
+    "v1CreateTestReminderRequest": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "title": "可空：后端自动挑选"
+        },
+        "message": {
+          "type": "string"
+        },
+        "delaySeconds": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "sendEmail": {
+          "type": "boolean"
+        }
+      },
+      "title": "创建测试提醒"
+    },
+    "v1CreateTestReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        },
+        "emailSent": {
+          "type": "boolean"
+        },
+        "emailError": {
+          "type": "string",
+          "title": "可空"
+        }
+      }
+    },
+    "v1DashboardData": {
+      "type": "object",
+      "properties": {
+        "upcomingEvents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        },
+        "priorityTasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PriorityTask"
+          }
+        },
+        "pendingReminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UpcomingReminder"
+          },
+          "title": "来自 reminder.proto 的 upcoming"
+        },
+        "eventSummary": {
+          "$ref": "#/definitions/v1EventSummary"
+        },
+        "taskSummary": {
+          "$ref": "#/definitions/v1TaskSummary"
+        }
+      },
+      "title": "Dashboard 数据聚合"
+    },
+    "v1DeleteEventCommentRequest": {
+      "type": "object",
+      "properties": {
+        "commentId": {
+          "type": "string"
+        }
+      }
+    },
+    "v1DeleteEventRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "删除事件"
+    },
+    "v1DeleteReminderRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "删除"
+    },
+    "v1DeleteReportRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "删除报表请求"
+    },
+    "v1DeleteTaskRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "删除任务请求"
+    },
+    "v1EmailCodeLoginRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "title": "Deprecated: 独立邮箱验证码登录 (现已合并入 LoginRequest) 保留兼容"
+    },
+    "v1Event": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "eventType": {
+          "$ref": "#/definitions/v1EventType"
+        },
+        "eventDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "recurrenceType": {
+          "$ref": "#/definitions/v1RecurrenceType",
+          "title": "none 则为一次性"
+        },
+        "recurrenceConfig": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "预留 (例如 day, interval)"
+        },
+        "importanceLevel": {
+          "type": "integer",
+          "format": "int32",
+          "description": "unchanged",
+          "title": "importance_level 对齐后端 ImportanceLevel (1-5)"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        },
+        "isAllDay": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "lastTriggeredAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "可为空"
+        }
+      },
+      "title": "事件"
+    },
+    "v1EventComment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1EventCommentType"
+        },
+        "content": {
+          "type": "string"
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "system 元数据"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1EventCommentType": {
+      "type": "string",
+      "enum": [
+        "EVENT_COMMENT_TYPE_UNSPECIFIED",
+        "EVENT_COMMENT_TYPE_TEXT",
+        "EVENT_COMMENT_TYPE_SYSTEM"
+      ],
+      "default": "EVENT_COMMENT_TYPE_UNSPECIFIED",
+      "title": "事件评论 / 时间线"
+    },
+    "v1EventSummary": {
+      "type": "object",
+      "properties": {
+        "totalEvents": {
+          "type": "string",
+          "format": "int64"
+        },
+        "upcomingCount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "todayCount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "typeBreakdown": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      },
+      "title": "事件摘要"
+    },
+    "v1EventType": {
+      "type": "string",
+      "enum": [
+        "EVENT_TYPE_UNSPECIFIED",
+        "EVENT_TYPE_BIRTHDAY",
+        "EVENT_TYPE_ANNIVERSARY",
+        "EVENT_TYPE_HOLIDAY",
+        "EVENT_TYPE_CUSTOM",
+        "EVENT_TYPE_MEETING",
+        "EVENT_TYPE_DEADLINE"
+      ],
+      "default": "EVENT_TYPE_UNSPECIFIED",
+      "title": "事件类型"
+    },
+    "v1ExportReportRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "title": "\"csv\", \"excel\", \"pdf\""
+        }
+      },
+      "title": "导出报表请求"
+    },
+    "v1ExportReportResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        }
+      },
+      "title": "导出报表响应"
+    },
+    "v1GenerateReportRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1ReportType"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "生成报表请求"
+    },
+    "v1GenerateReportResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "report": {
+          "$ref": "#/definitions/v1Report"
+        }
+      },
+      "title": "生成报表响应"
+    },
+    "v1GetCalendarEventsRequest": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "month": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "日历 (指定年/月)"
+    },
+    "v1GetCalendarEventsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "year": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "month": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CalendarDayEvents"
+          }
+        }
+      }
+    },
+    "v1GetCaptchaRequest": {
+      "type": "object",
+      "description": "暂时无需参数",
+      "title": "获取验证码请求"
+    },
+    "v1GetCaptchaResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "captcha": {
+          "$ref": "#/definitions/v1Captcha"
+        }
+      },
+      "title": "获取验证码响应"
+    },
+    "v1GetDashboardDataRequest": {
+      "type": "object"
+    },
+    "v1GetDashboardDataResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "data": {
+          "$ref": "#/definitions/v1DashboardData"
+        }
+      }
+    },
+    "v1GetEventRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "获取事件"
+    },
+    "v1GetEventResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      }
+    },
+    "v1GetPriorityTasksRequest": {
+      "type": "object"
+    },
+    "v1GetPriorityTasksResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PriorityTask"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1GetReminderRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "获取单个"
+    },
+    "v1GetReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1ReminderWithEvent"
+        }
+      }
+    },
+    "v1GetReportRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "获取报表请求"
+    },
+    "v1GetReportResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "report": {
+          "$ref": "#/definitions/v1Report"
+        }
+      },
+      "title": "获取报表响应"
+    },
+    "v1GetReportsRequest": {
+      "type": "object",
+      "properties": {
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationRequest"
+        },
+        "type": {
+          "$ref": "#/definitions/v1ReportType"
+        }
+      },
+      "title": "获取报表列表请求"
+    },
+    "v1GetReportsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Report"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      },
+      "title": "获取报表列表响应"
+    },
+    "v1GetTaskRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "获取任务请求"
+    },
+    "v1GetTaskResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        }
+      },
+      "title": "获取任务响应"
+    },
+    "v1GetTaskSortConfigRequest": {
+      "type": "object"
+    },
+    "v1GetTaskSortConfigResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "config": {
+          "$ref": "#/definitions/v1TaskSortConfig"
+        }
+      }
+    },
+    "v1GetTasksRequest": {
+      "type": "object",
+      "properties": {
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationRequest"
+        },
+        "status": {
+          "$ref": "#/definitions/v1TaskStatus"
+        },
+        "priority": {
+          "$ref": "#/definitions/v1TaskPriority"
+        },
+        "activeOnly": {
+          "type": "boolean",
+          "title": "预留"
+        }
+      },
+      "title": "获取任务列表请求"
+    },
+    "v1GetTasksResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Task"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      },
+      "title": "获取任务列表响应"
+    },
+    "v1GetUnifiedCalendarRequest": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "month": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "Calendar"
+    },
+    "v1GetUnifiedCalendarResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "year": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "month": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UnifiedCalendarDay"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "serverTimestamp": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1GetUnifiedUpcomingRequest": {
+      "type": "object",
+      "properties": {
+        "hours": {
+          "type": "integer",
+          "format": "int32",
+          "title": "默认72"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "task,event,reminder"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "title": "默认50"
+        },
+        "debug": {
+          "type": "boolean",
+          "title": "是否包含调试"
+        }
+      },
+      "title": "Upcoming 请求"
+    },
+    "v1GetUnifiedUpcomingResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UnifiedItem"
+          }
+        },
+        "hours": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "serverTimestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "stats": {
+          "$ref": "#/definitions/v1UnifiedUpcomingStats"
+        },
+        "debug": {
+          "$ref": "#/definitions/v1UnifiedUpcomingDebug",
+          "title": "可空"
+        }
+      }
+    },
+    "v1GetUpcomingEventsRequest": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "即将到来的事件 (按天数窗口)"
+    },
+    "v1GetUpcomingEventsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        },
+        "days": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1GetUpcomingRemindersRequest": {
+      "type": "object",
+      "properties": {
+        "hours": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1GetUpcomingRemindersResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UpcomingReminder"
+          }
+        },
+        "hours": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListEventTimelineRequest": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "beforeId": {
+          "type": "string"
+        }
+      }
+    },
+    "v1ListEventTimelineResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1EventComment"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListEventsRequest": {
+      "type": "object",
+      "properties": {
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationRequest"
+        },
+        "eventType": {
+          "$ref": "#/definitions/v1EventType"
+        },
+        "upcomingOnly": {
+          "type": "boolean",
+          "title": "仅未来"
+        },
+        "activeOnly": {
+          "type": "boolean",
+          "title": "is_active"
+        }
+      },
+      "title": "列表 \u0026 过滤"
+    },
+    "v1ListEventsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      }
+    },
+    "v1ListNotificationsRequest": {
+      "type": "object",
+      "properties": {
+        "unreadOnly": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListNotificationsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Notification"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListRemindersRequest": {
+      "type": "object",
+      "properties": {
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationRequest"
+        },
+        "activeOnly": {
+          "type": "boolean"
+        }
+      },
+      "title": "列表"
+    },
+    "v1ListRemindersResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ReminderWithEvent"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      }
+    },
+    "v1ListSimpleRemindersRequest": {
+      "type": "object",
+      "properties": {
+        "activeOnly": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "精简列表 (无分页)"
+    },
+    "v1ListSimpleRemindersResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Reminder"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1LoginRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "title": "使用密码登录时必填"
+        },
+        "emailCodeId": {
+          "type": "string",
+          "title": "使用邮箱验证码登录: code id"
+        },
+        "emailCode": {
+          "type": "string",
+          "title": "使用邮箱验证码登录: code"
+        }
+      },
+      "title": "登录请求（统一: 支持密码或邮箱验证码二选一）"
+    },
+    "v1LoginResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "token": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/v1User",
+          "title": "预留"
+        }
+      },
+      "title": "登录响应"
+    },
+    "v1MarkAllNotificationsReadRequest": {
+      "type": "object"
+    },
+    "v1MarkAllNotificationsReadResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "modified": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1MarkNotificationReadRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "v1MarkNotificationReadResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1Notification": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string",
+          "title": "optional"
+        },
+        "isRead": {
+          "type": "boolean"
+        },
+        "readAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1PaginationRequest": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "分页请求"
+    },
+    "v1PaginationResponse": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalPages": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "分页响应"
+    },
+    "v1PreviewReminderItem": {
+      "type": "object",
+      "properties": {
+        "reminderAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1PreviewReminderRequest": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string"
+        },
+        "advanceDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminderTimes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "预览提醒计划（不落库）"
+    },
+    "v1PreviewReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "schedule": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PreviewReminderItem"
+          }
+        }
+      }
+    },
+    "v1PriorityTask": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        },
+        "priorityScore": {
+          "type": "number",
+          "format": "double"
+        },
+        "daysLeft": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "isUrgent": {
+          "type": "boolean"
+        }
+      },
+      "title": "优先任务 (Dashboard, Unified 使用)"
+    },
+    "v1RecurrenceType": {
+      "type": "string",
+      "enum": [
+        "RECURRENCE_TYPE_UNSPECIFIED",
+        "RECURRENCE_TYPE_NONE",
+        "RECURRENCE_TYPE_YEARLY",
+        "RECURRENCE_TYPE_MONTHLY",
+        "RECURRENCE_TYPE_WEEKLY",
+        "RECURRENCE_TYPE_DAILY"
+      ],
+      "default": "RECURRENCE_TYPE_UNSPECIFIED",
+      "description": "- RECURRENCE_TYPE_UNSPECIFIED: 兼容",
+      "title": "循环类型"
+    },
+    "v1RegisterRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "title": "必填: 密码注册"
+        },
+        "captchaId": {
+          "type": "string",
+          "title": "可选: 若启用图形验证码"
+        },
+        "captchaCode": {
+          "type": "string",
+          "title": "可选"
+        },
+        "emailCodeId": {
+          "type": "string",
+          "title": "新增: 邮箱验证码注册 (与现有 HTTP /api/auth/send-email-code 对应)"
+        },
+        "emailCode": {
+          "type": "string",
+          "title": "新增"
+        }
+      },
+      "title": "注册请求"
+    },
+    "v1RegisterResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "user": {
+          "$ref": "#/definitions/v1User"
+        },
+        "token": {
+          "type": "string",
+          "title": "对齐现有返回 (现行 HTTP 直接返回 token)"
+        }
+      },
+      "title": "注册响应"
+    },
+    "v1Reminder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "advanceDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminderTimes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "HH:MM"
+        },
+        "absoluteTimes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": "与后端 AbsoluteTimes 对齐"
+        },
+        "reminderType": {
+          "$ref": "#/definitions/v1ReminderType"
+        },
+        "customMessage": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "lastSent": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "nextSend": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "提醒"
+    },
+    "v1ReminderType": {
+      "type": "string",
+      "enum": [
+        "REMINDER_TYPE_UNSPECIFIED",
+        "REMINDER_TYPE_APP",
+        "REMINDER_TYPE_EMAIL",
+        "REMINDER_TYPE_BOTH"
+      ],
+      "default": "REMINDER_TYPE_UNSPECIFIED",
+      "description": "- REMINDER_TYPE_APP: app (SSE)\n - REMINDER_TYPE_EMAIL: email\n - REMINDER_TYPE_BOTH: both",
+      "title": "提醒类型"
+    },
+    "v1ReminderWithEvent": {
+      "type": "object",
+      "properties": {
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      },
+      "title": "包含事件的提醒"
+    },
+    "v1Report": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1ReportType"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "可用 created_at 替代旧结构"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "可用 updated_at 替代"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Task"
+          }
+        },
+        "stats": {
+          "$ref": "#/definitions/v1ReportStats"
+        },
+        "period": {
+          "type": "string",
+          "title": "新增 对齐后端 Period"
+        },
+        "content": {
+          "type": "string",
+          "title": "新增 原始内容"
+        },
+        "polishedContent": {
+          "type": "string",
+          "title": "新增 精炼内容"
+        }
+      },
+      "title": "报表模型"
+    },
+    "v1ReportStats": {
+      "type": "object",
+      "properties": {
+        "totalTasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "completedTasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "pendingTasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "inProgressTasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "completionRate": {
+          "type": "number",
+          "format": "double"
+        },
+        "overdueTasks": {
+          "type": "integer",
+          "format": "int32",
+          "title": "新增 与后端 Statistics.OverdueTasks"
+        }
+      },
+      "title": "报表统计信息"
+    },
+    "v1ReportType": {
+      "type": "string",
+      "enum": [
+        "REPORT_TYPE_UNSPECIFIED",
+        "REPORT_TYPE_DAILY",
+        "REPORT_TYPE_WEEKLY",
+        "REPORT_TYPE_MONTHLY"
+      ],
+      "default": "REPORT_TYPE_UNSPECIFIED",
+      "title": "报表类型枚举"
+    },
+    "v1Response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/protobufAny"
+        }
+      },
+      "title": "通用响应结构"
+    },
+    "v1SendLoginEmailCodeRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        }
+      },
+      "title": "发送登录邮箱验证码请求"
+    },
+    "v1SendLoginEmailCodeResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        }
+      }
+    },
+    "v1SnoozeReminderRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "snoozeMinutes": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "Snooze"
+    },
+    "v1SnoozeReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "snoozeMinutes": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1Task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1TaskStatus"
+        },
+        "priority": {
+          "$ref": "#/definitions/v1TaskPriority"
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "deprecated: 旧字段，对应后端 deadline，保留兼容"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "scheduledDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "scheduledDate"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "title": "真正截止日期"
+        },
+        "assignee": {
+          "type": "string",
+          "title": "新增: 与后端 Assignee 对齐（可能为空）"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1TaskComment"
+          },
+          "title": "新增: 评论列表"
+        }
+      },
+      "title": "任务模型"
+    },
+    "v1TaskComment": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "任务评论"
+    },
+    "v1TaskPriority": {
+      "type": "string",
+      "enum": [
+        "TASK_PRIORITY_UNSPECIFIED",
+        "TASK_PRIORITY_LOW",
+        "TASK_PRIORITY_MEDIUM",
+        "TASK_PRIORITY_HIGH"
+      ],
+      "default": "TASK_PRIORITY_UNSPECIFIED",
+      "title": "任务优先级枚举"
+    },
+    "v1TaskSortConfig": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "priorityDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "maxDisplayCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "weightUrgent": {
+          "type": "number",
+          "format": "double"
+        },
+        "weightImportant": {
+          "type": "number",
+          "format": "double"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "任务排序配置"
+    },
+    "v1TaskStatus": {
+      "type": "string",
+      "enum": [
+        "TASK_STATUS_UNSPECIFIED",
+        "TASK_STATUS_TODO",
+        "TASK_STATUS_IN_PROGRESS",
+        "TASK_STATUS_DONE"
+      ],
+      "default": "TASK_STATUS_UNSPECIFIED",
+      "title": "任务状态枚举"
+    },
+    "v1TaskSummary": {
+      "type": "object",
+      "properties": {
+        "totalTasks": {
+          "type": "string",
+          "format": "int64"
+        },
+        "completedRate": {
+          "type": "number",
+          "format": "double"
+        },
+        "overdueCount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "statusCounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      },
+      "title": "任务摘要"
+    },
+    "v1ToggleReminderActiveRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "title": "Toggle Active"
+    },
+    "v1ToggleReminderActiveResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1UnifiedCalendarDay": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UnifiedCalendarItem"
+          }
+        }
+      }
+    },
+    "v1UnifiedCalendarItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "importance": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "detailUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "v1UnifiedItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "title": "task | event | reminder"
+        },
+        "title": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "countdownSeconds": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "daysLeft": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "importance": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "priorityScore": {
+          "type": "number",
+          "format": "double"
+        },
+        "relatedEventId": {
+          "type": "string"
+        },
+        "detailUrl": {
+          "type": "string"
+        },
+        "sourceId": {
+          "type": "string"
+        },
+        "isUnscheduled": {
+          "type": "boolean",
+          "title": "与后端未安排任务逻辑对齐"
+        }
+      },
+      "title": "统一聚合条目"
+    },
+    "v1UnifiedUpcomingDebug": {
+      "type": "object",
+      "properties": {
+        "graceDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "hours": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "now": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        },
+        "windowFilter": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "简化"
+        },
+        "unscheduledFilter": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "windowCounts": {
+          "$ref": "#/definitions/v1UnifiedUpcomingWindowCounts"
+        },
+        "addedUnscheduled": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1UnifiedUpcomingStats": {
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "events": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminders": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "统计分布"
+    },
+    "v1UnifiedUpcomingWindowCounts": {
+      "type": "object",
+      "properties": {
+        "deadline": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "scheduled": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "dueDateOnly": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "调试信息"
+    },
+    "v1UpcomingReminder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "eventTitle": {
+          "type": "string"
+        },
+        "eventDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "message": {
+          "type": "string"
+        },
+        "daysLeft": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "importance": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminderAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "即将到来的提醒"
+    },
+    "v1UpdateEventCommentRequest": {
+      "type": "object",
+      "properties": {
+        "commentId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "v1UpdateEventCommentResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "comment": {
+          "$ref": "#/definitions/v1EventComment"
+        }
+      }
+    },
+    "v1UpdateEventRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "eventType": {
+          "$ref": "#/definitions/v1EventType"
+        },
+        "eventDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "recurrenceType": {
+          "$ref": "#/definitions/v1RecurrenceType"
+        },
+        "recurrenceConfig": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "importanceLevel": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        },
+        "isAllDay": {
+          "type": "boolean"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "title": "更新事件 (全部可选)"
+    },
+    "v1UpdateEventResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      }
+    },
+    "v1UpdateReminderRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "advanceDays": {
+          "type": "integer",
+          "format": "int32",
+          "title": "0 表示更新为 0；不传表示不修改"
+        },
+        "reminderTimes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "absoluteTimes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "reminderType": {
+          "$ref": "#/definitions/v1ReminderType"
+        },
+        "customMessage": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "title": "更新（全部可选）"
+    },
+    "v1UpdateReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        }
+      }
+    },
+    "v1UpdateTaskRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1TaskStatus"
+        },
+        "priority": {
+          "$ref": "#/definitions/v1TaskPriority"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "scheduledDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "assignee": {
+          "type": "string"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1TaskComment"
+          },
+          "title": "全量替换"
+        }
+      },
+      "title": "更新任务请求"
+    },
+    "v1UpdateTaskResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        }
+      },
+      "title": "更新任务响应"
+    },
+    "v1UpdateTaskSortConfigRequest": {
+      "type": "object",
+      "properties": {
+        "priorityDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "maxDisplayCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "weightUrgent": {
+          "type": "number",
+          "format": "double"
+        },
+        "weightImportant": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "title": "更新任务排序配置"
+    },
+    "v1UpdateTaskSortConfigResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "config": {
+          "$ref": "#/definitions/v1TaskSortConfig"
+        }
+      }
+    },
+    "v1User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "NOTE: 目前后端未单独维护, 用 created_at 占位"
+        }
+      },
+      "title": "用户模型"
+    },
+    "v1VerifyTokenRequest": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      },
+      "title": "验证令牌请求"
+    },
+    "v1VerifyTokenResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "user": {
+          "$ref": "#/definitions/v1User"
+        }
+      },
+      "title": "验证令牌响应"
+    }
+  }
+}

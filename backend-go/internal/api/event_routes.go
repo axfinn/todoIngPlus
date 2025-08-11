@@ -11,15 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/observability"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/observability"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
-	"github.com/axfinn/todoIng/backend-go/internal/services"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 )
 
 // EventDeps 事件相关依赖
@@ -387,7 +388,7 @@ func (d *EventDeps) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		IsAllDay:         raw.IsAllDay,
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	event, err := eventService.CreateEvent(context.Background(), objectID, req)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "create_failed", fmt.Sprintf("Failed to create event: %v", err))
@@ -455,7 +456,7 @@ func (d *EventDeps) GetEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	event, err := eventService.GetEvent(context.Background(), objectID, eventID)
 	if err != nil {
 		if err.Error() == "event not found" {
@@ -498,7 +499,7 @@ func (d *EventDeps) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	event, err := eventService.UpdateEvent(context.Background(), objectID, eventID, req)
 	if err != nil {
 		if err.Error() == "event not found" {
@@ -541,7 +542,7 @@ func (d *EventDeps) AdvanceEvent(w http.ResponseWriter, r *http.Request) {
 		dec.DisallowUnknownFields()
 		_ = dec.Decode(&body) // 忽略解析错误（可能无 body）
 	}
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	event, err := eventService.AdvanceEvent(context.Background(), objectID, eventID, body.Reason)
 	if err != nil {
 		if err.Error() == "event not found" {
@@ -577,7 +578,7 @@ func (d *EventDeps) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	err = eventService.DeleteEvent(context.Background(), objectID, eventID)
 	if err != nil {
 		if err.Error() == "event not found" {
@@ -636,7 +637,7 @@ func (d *EventDeps) ListEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	response, err := eventService.ListEvents(context.Background(), objectID, page, pageSize, eventType, startDate, endDate)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to list events: %v", err), http.StatusInternalServerError)
@@ -668,7 +669,7 @@ func (d *EventDeps) GetUpcomingEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	events, err := eventService.GetUpcomingEvents(context.Background(), objectID, days)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get upcoming events: %v", err), http.StatusInternalServerError)
@@ -724,7 +725,7 @@ func (d *EventDeps) GetCalendarEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	calendar, err := eventService.GetCalendarEvents(context.Background(), objectID, year, month)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get calendar events: %v", err), http.StatusInternalServerError)
@@ -766,7 +767,7 @@ func (d *EventDeps) GetEventOptions(w http.ResponseWriter, r *http.Request) {
 	}
 	opts := []option{}
 	if !legacy {
-		eventService := services.NewEventService(d.DB)
+		eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 		resp, err := eventService.ListEvents(context.Background(), objectID, 1, 200, "", nil, nil)
 		if err != nil {
 			observability.LogWarn("GetEventOptions list error user=%s err=%v", userID, err)
@@ -810,7 +811,7 @@ func (d *EventDeps) SearchEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	eventService := services.NewEventService(d.DB)
+	eventService := services.NewEventService(repository.NewEventRepository(d.DB))
 	events, err := eventService.SearchEvents(context.Background(), objectID, keyword, limit)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to search events: %v", err), http.StatusInternalServerError)

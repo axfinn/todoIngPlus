@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
-	"github.com/axfinn/todoIng/backend-go/internal/notifications"
-	"github.com/axfinn/todoIng/backend-go/internal/services"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/notifications"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/services"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

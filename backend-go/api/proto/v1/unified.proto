@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package todoing.api.v1;
+
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// 统一聚合条目
+message UnifiedItem {
+  string id = 1;
+  string source = 2; // task | event | reminder
+  string title = 3;
+  google.protobuf.Timestamp scheduled_at = 4;
+  int32 countdown_seconds = 5;
+  int32 days_left = 6;
+  int32 importance = 7;
+  double priority_score = 8;
+  string related_event_id = 9;
+  string detail_url = 10;
+  string source_id = 11;
+  bool is_unscheduled = 12; // 与后端未安排任务逻辑对齐
+}
+
+// Upcoming 请求
+message GetUnifiedUpcomingRequest {
+  int32 hours = 1; // 默认72
+  repeated string sources = 2; // task,event,reminder
+  int32 limit = 3; // 默认50
+  bool debug = 4; // 是否包含调试
+}
+
+// 统计分布
+message UnifiedUpcomingStats { int32 tasks = 1; int32 events = 2; int32 reminders = 3; }
+
+// 调试信息
+message UnifiedUpcomingWindowCounts { int32 deadline = 1; int32 scheduled = 2; int32 due_date_only = 3; int32 total = 4; }
+message UnifiedUpcomingDebug {
+  int32 grace_days = 1;
+  int32 hours = 2;
+  string now = 3;
+  string end = 4;
+  map<string,string> window_filter = 5; // 简化
+  map<string,string> unscheduled_filter = 6;
+  UnifiedUpcomingWindowCounts window_counts = 7;
+  int32 added_unscheduled = 8;
+}
+
+message GetUnifiedUpcomingResponse {
+  Response response = 1;
+  repeated UnifiedItem items = 2;
+  int32 hours = 3;
+  int32 total = 4;
+  int64 server_timestamp = 5;
+  UnifiedUpcomingStats stats = 6;
+  UnifiedUpcomingDebug debug = 7; // 可空
+}
+
+// Calendar
+message GetUnifiedCalendarRequest { int32 year = 1; int32 month = 2; repeated string sources = 3; int32 limit = 4; }
+message UnifiedCalendarItem { string id = 1; string source = 2; string title = 3; google.protobuf.Timestamp scheduled_at = 4; int32 importance = 5; string detail_url = 6; }
+message UnifiedCalendarDay { string date = 1; repeated UnifiedCalendarItem items = 2; }
+message GetUnifiedCalendarResponse { Response response = 1; int32 year = 2; int32 month = 3; repeated UnifiedCalendarDay days = 4; int32 total = 5; int64 server_timestamp = 6; }
+
+service UnifiedService {
+  rpc GetUnifiedUpcoming(GetUnifiedUpcomingRequest) returns (GetUnifiedUpcomingResponse);
+  rpc GetUnifiedCalendar(GetUnifiedCalendarRequest) returns (GetUnifiedCalendarResponse);
+}

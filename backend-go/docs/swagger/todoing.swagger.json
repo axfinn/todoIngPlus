@@ -1,0 +1,1614 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "auth.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AuthService"
+    },
+    {
+      "name": "CaptchaService"
+    },
+    {
+      "name": "DashboardService"
+    },
+    {
+      "name": "EventService"
+    },
+    {
+      "name": "NotificationService"
+    },
+    {
+      "name": "ReminderService"
+    },
+    {
+      "name": "ReportService"
+    },
+    {
+      "name": "TaskService"
+    },
+    {
+      "name": "UnifiedService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n\nExample 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\nExample 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\n\nJSON\n\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1AddEventCommentResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "comment": {
+          "$ref": "#/definitions/v1EventComment"
+        }
+      }
+    },
+    "v1CalendarDayEvents": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        }
+      }
+    },
+    "v1Captcha": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "image_data": {
+          "type": "string",
+          "title": "base64编码的图片数据"
+        }
+      },
+      "title": "验证码模型"
+    },
+    "v1CreateEventResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      }
+    },
+    "v1CreateNotificationResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "notification": {
+          "$ref": "#/definitions/v1Notification"
+        }
+      }
+    },
+    "v1CreateReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        }
+      }
+    },
+    "v1CreateTaskResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        }
+      },
+      "title": "创建任务响应"
+    },
+    "v1CreateTestReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        },
+        "email_sent": {
+          "type": "boolean"
+        },
+        "email_error": {
+          "type": "string",
+          "title": "可空"
+        }
+      }
+    },
+    "v1DashboardData": {
+      "type": "object",
+      "properties": {
+        "upcoming_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        },
+        "priority_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PriorityTask"
+          }
+        },
+        "pending_reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UpcomingReminder"
+          },
+          "title": "来自 reminder.proto 的 upcoming"
+        },
+        "event_summary": {
+          "$ref": "#/definitions/v1EventSummary"
+        },
+        "task_summary": {
+          "$ref": "#/definitions/v1TaskSummary"
+        }
+      },
+      "title": "Dashboard 数据聚合"
+    },
+    "v1Event": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "event_type": {
+          "$ref": "#/definitions/v1EventType"
+        },
+        "event_date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "recurrence_type": {
+          "$ref": "#/definitions/v1RecurrenceType",
+          "title": "none 则为一次性"
+        },
+        "recurrence_config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "预留 (例如 day, interval)"
+        },
+        "importance_level": {
+          "type": "integer",
+          "format": "int32",
+          "description": "unchanged",
+          "title": "importance_level 对齐后端 ImportanceLevel (1-5)"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        },
+        "is_all_day": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "last_triggered_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "可为空"
+        }
+      },
+      "title": "事件"
+    },
+    "v1EventComment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1EventCommentType"
+        },
+        "content": {
+          "type": "string"
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "system 元数据"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1EventCommentType": {
+      "type": "string",
+      "enum": [
+        "EVENT_COMMENT_TYPE_UNSPECIFIED",
+        "EVENT_COMMENT_TYPE_TEXT",
+        "EVENT_COMMENT_TYPE_SYSTEM"
+      ],
+      "default": "EVENT_COMMENT_TYPE_UNSPECIFIED",
+      "title": "事件评论 / 时间线"
+    },
+    "v1EventSummary": {
+      "type": "object",
+      "properties": {
+        "total_events": {
+          "type": "string",
+          "format": "int64"
+        },
+        "upcoming_count": {
+          "type": "string",
+          "format": "int64"
+        },
+        "today_count": {
+          "type": "string",
+          "format": "int64"
+        },
+        "type_breakdown": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      },
+      "title": "事件摘要"
+    },
+    "v1EventType": {
+      "type": "string",
+      "enum": [
+        "EVENT_TYPE_UNSPECIFIED",
+        "EVENT_TYPE_BIRTHDAY",
+        "EVENT_TYPE_ANNIVERSARY",
+        "EVENT_TYPE_HOLIDAY",
+        "EVENT_TYPE_CUSTOM",
+        "EVENT_TYPE_MEETING",
+        "EVENT_TYPE_DEADLINE"
+      ],
+      "default": "EVENT_TYPE_UNSPECIFIED",
+      "title": "事件类型"
+    },
+    "v1ExportReportResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "data": {
+          "type": "string",
+          "format": "byte"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        }
+      },
+      "title": "导出报表响应"
+    },
+    "v1GenerateReportResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "report": {
+          "$ref": "#/definitions/v1Report"
+        }
+      },
+      "title": "生成报表响应"
+    },
+    "v1GetCalendarEventsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "year": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "month": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CalendarDayEvents"
+          }
+        }
+      }
+    },
+    "v1GetCaptchaResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "captcha": {
+          "$ref": "#/definitions/v1Captcha"
+        }
+      },
+      "title": "获取验证码响应"
+    },
+    "v1GetDashboardDataResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "data": {
+          "$ref": "#/definitions/v1DashboardData"
+        }
+      }
+    },
+    "v1GetEventResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      }
+    },
+    "v1GetPriorityTasksResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PriorityTask"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1GetReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1ReminderWithEvent"
+        }
+      }
+    },
+    "v1GetReportResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "report": {
+          "$ref": "#/definitions/v1Report"
+        }
+      },
+      "title": "获取报表响应"
+    },
+    "v1GetReportsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Report"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      },
+      "title": "获取报表列表响应"
+    },
+    "v1GetTaskResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        }
+      },
+      "title": "获取任务响应"
+    },
+    "v1GetTaskSortConfigResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "config": {
+          "$ref": "#/definitions/v1TaskSortConfig"
+        }
+      }
+    },
+    "v1GetTasksResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Task"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      },
+      "title": "获取任务列表响应"
+    },
+    "v1GetUnifiedCalendarResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "year": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "month": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UnifiedCalendarDay"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "server_timestamp": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1GetUnifiedUpcomingResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UnifiedItem"
+          }
+        },
+        "hours": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "server_timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "stats": {
+          "$ref": "#/definitions/v1UnifiedUpcomingStats"
+        },
+        "debug": {
+          "$ref": "#/definitions/v1UnifiedUpcomingDebug",
+          "title": "可空"
+        }
+      }
+    },
+    "v1GetUpcomingEventsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        },
+        "days": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1GetUpcomingRemindersResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UpcomingReminder"
+          }
+        },
+        "hours": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListEventTimelineResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1EventComment"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListEventsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Event"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      }
+    },
+    "v1ListNotificationsResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Notification"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1ListRemindersResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ReminderWithEvent"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/v1PaginationResponse"
+        }
+      }
+    },
+    "v1ListSimpleRemindersResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Reminder"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1LoginResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "token": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/v1User",
+          "title": "预留"
+        }
+      },
+      "title": "登录响应"
+    },
+    "v1MarkAllNotificationsReadResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "modified": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1MarkNotificationReadResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1Notification": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "event_id": {
+          "type": "string",
+          "title": "optional"
+        },
+        "is_read": {
+          "type": "boolean"
+        },
+        "read_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1PaginationRequest": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "分页请求"
+    },
+    "v1PaginationResponse": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total_pages": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "分页响应"
+    },
+    "v1PreviewReminderItem": {
+      "type": "object",
+      "properties": {
+        "reminder_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1PreviewReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "schedule": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PreviewReminderItem"
+          }
+        }
+      }
+    },
+    "v1PriorityTask": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        },
+        "priority_score": {
+          "type": "number",
+          "format": "double"
+        },
+        "days_left": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "is_urgent": {
+          "type": "boolean"
+        }
+      },
+      "title": "优先任务 (Dashboard, Unified 使用)"
+    },
+    "v1RecurrenceType": {
+      "type": "string",
+      "enum": [
+        "RECURRENCE_TYPE_UNSPECIFIED",
+        "RECURRENCE_TYPE_NONE",
+        "RECURRENCE_TYPE_YEARLY",
+        "RECURRENCE_TYPE_MONTHLY",
+        "RECURRENCE_TYPE_WEEKLY",
+        "RECURRENCE_TYPE_DAILY"
+      ],
+      "default": "RECURRENCE_TYPE_UNSPECIFIED",
+      "description": "- RECURRENCE_TYPE_UNSPECIFIED: 兼容",
+      "title": "循环类型"
+    },
+    "v1RegisterResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "user": {
+          "$ref": "#/definitions/v1User"
+        },
+        "token": {
+          "type": "string",
+          "title": "对齐现有返回 (现行 HTTP 直接返回 token)"
+        }
+      },
+      "title": "注册响应"
+    },
+    "v1Reminder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "advance_days": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminder_times": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "HH:MM"
+        },
+        "absolute_times": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": "与后端 AbsoluteTimes 对齐"
+        },
+        "reminder_type": {
+          "$ref": "#/definitions/v1ReminderType"
+        },
+        "custom_message": {
+          "type": "string"
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "last_sent": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "next_send": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "提醒"
+    },
+    "v1ReminderType": {
+      "type": "string",
+      "enum": [
+        "REMINDER_TYPE_UNSPECIFIED",
+        "REMINDER_TYPE_APP",
+        "REMINDER_TYPE_EMAIL",
+        "REMINDER_TYPE_BOTH"
+      ],
+      "default": "REMINDER_TYPE_UNSPECIFIED",
+      "description": "- REMINDER_TYPE_APP: app (SSE)\n - REMINDER_TYPE_EMAIL: email\n - REMINDER_TYPE_BOTH: both",
+      "title": "提醒类型"
+    },
+    "v1ReminderWithEvent": {
+      "type": "object",
+      "properties": {
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      },
+      "title": "包含事件的提醒"
+    },
+    "v1Report": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1ReportType"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "可用 created_at 替代旧结构"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "可用 updated_at 替代"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Task"
+          }
+        },
+        "stats": {
+          "$ref": "#/definitions/v1ReportStats"
+        },
+        "period": {
+          "type": "string",
+          "title": "新增 对齐后端 Period"
+        },
+        "content": {
+          "type": "string",
+          "title": "新增 原始内容"
+        },
+        "polished_content": {
+          "type": "string",
+          "title": "新增 精炼内容"
+        }
+      },
+      "title": "报表模型"
+    },
+    "v1ReportStats": {
+      "type": "object",
+      "properties": {
+        "total_tasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "completed_tasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "pending_tasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "in_progress_tasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "completion_rate": {
+          "type": "number",
+          "format": "double"
+        },
+        "overdue_tasks": {
+          "type": "integer",
+          "format": "int32",
+          "title": "新增 与后端 Statistics.OverdueTasks"
+        }
+      },
+      "title": "报表统计信息"
+    },
+    "v1ReportType": {
+      "type": "string",
+      "enum": [
+        "REPORT_TYPE_UNSPECIFIED",
+        "REPORT_TYPE_DAILY",
+        "REPORT_TYPE_WEEKLY",
+        "REPORT_TYPE_MONTHLY"
+      ],
+      "default": "REPORT_TYPE_UNSPECIFIED",
+      "title": "报表类型枚举"
+    },
+    "v1Response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/protobufAny"
+        }
+      },
+      "title": "通用响应结构"
+    },
+    "v1SendLoginEmailCodeResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        }
+      }
+    },
+    "v1SnoozeReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "snooze_minutes": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1Task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/v1TaskStatus"
+        },
+        "priority": {
+          "$ref": "#/definitions/v1TaskPriority"
+        },
+        "due_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "deprecated: 旧字段，对应后端 deadline，保留兼容"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "scheduled_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "scheduledDate"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "title": "真正截止日期"
+        },
+        "assignee": {
+          "type": "string",
+          "title": "新增: 与后端 Assignee 对齐（可能为空）"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1TaskComment"
+          },
+          "title": "新增: 评论列表"
+        }
+      },
+      "title": "任务模型"
+    },
+    "v1TaskComment": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "created_by": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "任务评论"
+    },
+    "v1TaskPriority": {
+      "type": "string",
+      "enum": [
+        "TASK_PRIORITY_UNSPECIFIED",
+        "TASK_PRIORITY_LOW",
+        "TASK_PRIORITY_MEDIUM",
+        "TASK_PRIORITY_HIGH"
+      ],
+      "default": "TASK_PRIORITY_UNSPECIFIED",
+      "title": "任务优先级枚举"
+    },
+    "v1TaskSortConfig": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string"
+        },
+        "priority_days": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "max_display_count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "weight_urgent": {
+          "type": "number",
+          "format": "double"
+        },
+        "weight_important": {
+          "type": "number",
+          "format": "double"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "任务排序配置"
+    },
+    "v1TaskStatus": {
+      "type": "string",
+      "enum": [
+        "TASK_STATUS_UNSPECIFIED",
+        "TASK_STATUS_TODO",
+        "TASK_STATUS_IN_PROGRESS",
+        "TASK_STATUS_DONE"
+      ],
+      "default": "TASK_STATUS_UNSPECIFIED",
+      "title": "任务状态枚举"
+    },
+    "v1TaskSummary": {
+      "type": "object",
+      "properties": {
+        "total_tasks": {
+          "type": "string",
+          "format": "int64"
+        },
+        "completed_rate": {
+          "type": "number",
+          "format": "double"
+        },
+        "overdue_count": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      },
+      "title": "任务摘要"
+    },
+    "v1ToggleReminderActiveResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "is_active": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1UnifiedCalendarDay": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UnifiedCalendarItem"
+          }
+        }
+      }
+    },
+    "v1UnifiedCalendarItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "scheduled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "importance": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "detail_url": {
+          "type": "string"
+        }
+      }
+    },
+    "v1UnifiedItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "title": "task | event | reminder"
+        },
+        "title": {
+          "type": "string"
+        },
+        "scheduled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "countdown_seconds": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "days_left": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "importance": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "priority_score": {
+          "type": "number",
+          "format": "double"
+        },
+        "related_event_id": {
+          "type": "string"
+        },
+        "detail_url": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "is_unscheduled": {
+          "type": "boolean",
+          "title": "与后端未安排任务逻辑对齐"
+        }
+      },
+      "title": "统一聚合条目"
+    },
+    "v1UnifiedUpcomingDebug": {
+      "type": "object",
+      "properties": {
+        "grace_days": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "hours": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "now": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        },
+        "window_filter": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "简化"
+        },
+        "unscheduled_filter": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "window_counts": {
+          "$ref": "#/definitions/v1UnifiedUpcomingWindowCounts"
+        },
+        "added_unscheduled": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v1UnifiedUpcomingStats": {
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "events": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminders": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "统计分布"
+    },
+    "v1UnifiedUpcomingWindowCounts": {
+      "type": "object",
+      "properties": {
+        "deadline": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "scheduled": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "due_date_only": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "调试信息"
+    },
+    "v1UpcomingReminder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "event_title": {
+          "type": "string"
+        },
+        "event_date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "message": {
+          "type": "string"
+        },
+        "days_left": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "importance": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reminder_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "即将到来的提醒"
+    },
+    "v1UpdateEventCommentResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "comment": {
+          "$ref": "#/definitions/v1EventComment"
+        }
+      }
+    },
+    "v1UpdateEventResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "event": {
+          "$ref": "#/definitions/v1Event"
+        }
+      }
+    },
+    "v1UpdateReminderResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "reminder": {
+          "$ref": "#/definitions/v1Reminder"
+        }
+      }
+    },
+    "v1UpdateTaskResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "task": {
+          "$ref": "#/definitions/v1Task"
+        }
+      },
+      "title": "更新任务响应"
+    },
+    "v1UpdateTaskSortConfigResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "config": {
+          "$ref": "#/definitions/v1TaskSortConfig"
+        }
+      }
+    },
+    "v1User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "NOTE: 目前后端未单独维护, 用 created_at 占位"
+        }
+      },
+      "title": "用户模型"
+    },
+    "v1VerifyTokenResponse": {
+      "type": "object",
+      "properties": {
+        "response": {
+          "$ref": "#/definitions/v1Response"
+        },
+        "user": {
+          "$ref": "#/definitions/v1User"
+        }
+      },
+      "title": "验证令牌响应"
+    }
+  }
+}

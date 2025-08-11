@@ -282,7 +282,7 @@ const DashboardPage: React.FC = () => {
 
   // GitHub star操作
   const handleStarRepo = () => {
-    window.open('https://github.com/axfinn/todoIng', '_blank');
+    window.open('https://github.com/axfinn/todoIngPlus', '_blank');
   };
 
   if (isLoading) {

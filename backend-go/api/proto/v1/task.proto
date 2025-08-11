@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package todoing.api.v1;
 
-option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+option go_package = "github.com/axfinn/todoIngPlus/backend-go/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
-import "common.proto";
+import "common.proto"; // 引入 Response / Pagination* 定义
 
 // 任务状态枚举
 enum TaskStatus {
@@ -23,6 +23,13 @@ enum TaskPriority {
   TASK_PRIORITY_HIGH = 3;
 }
 
+// 任务评论
+message TaskComment {
+  string text = 1;
+  string created_by = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
 // 任务模型
 message Task {
   string id = 1;
@@ -30,10 +37,14 @@ message Task {
   string description = 3;
   TaskStatus status = 4;
   TaskPriority priority = 5;
-  google.protobuf.Timestamp due_date = 6;
+  google.protobuf.Timestamp due_date = 6; // deprecated: 旧字段，对应后端 deadline，保留兼容
   string user_id = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
+  google.protobuf.Timestamp scheduled_date = 10; // scheduledDate
+  google.protobuf.Timestamp deadline = 11;       // 真正截止日期
+  string assignee = 12; // 新增: 与后端 Assignee 对齐（可能为空）
+  repeated TaskComment comments = 13; // 新增: 评论列表
 }
 
 // 创建任务请求
@@ -42,7 +53,9 @@ message CreateTaskRequest {
   string description = 2;
   TaskStatus status = 3;
   TaskPriority priority = 4;
-  google.protobuf.Timestamp due_date = 5;
+  google.protobuf.Timestamp deadline = 5; // 使用统一字段
+  google.protobuf.Timestamp scheduled_date = 6;
+  string assignee = 7;
 }
 
 // 创建任务响应
@@ -56,6 +69,7 @@ message GetTasksRequest {
   PaginationRequest pagination = 1;
   TaskStatus status = 2;
   TaskPriority priority = 3;
+  bool active_only = 4; // 预留
 }
 
 // 获取任务列表响应
@@ -83,7 +97,10 @@ message UpdateTaskRequest {
   string description = 3;
   TaskStatus status = 4;
   TaskPriority priority = 5;
-  google.protobuf.Timestamp due_date = 6;
+  google.protobuf.Timestamp deadline = 6;
+  google.protobuf.Timestamp scheduled_date = 7;
+  string assignee = 8;
+  repeated TaskComment comments = 9; // 全量替换
 }
 
 // 更新任务响应
@@ -97,20 +114,49 @@ message DeleteTaskRequest {
   string id = 1;
 }
 
+// 优先任务 (Dashboard, Unified 使用)
+message PriorityTask {
+  Task task = 1;
+  double priority_score = 2;
+  int32 days_left = 3;
+  bool is_urgent = 4;
+}
+
+// 任务排序配置
+message TaskSortConfig {
+  string user_id = 1;
+  int32 priority_days = 2;
+  int32 max_display_count = 3;
+  double weight_urgent = 4;
+  double weight_important = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// 更新任务排序配置
+message UpdateTaskSortConfigRequest {
+  int32 priority_days = 1;
+  int32 max_display_count = 2;
+  double weight_urgent = 3;
+  double weight_important = 4;
+}
+message UpdateTaskSortConfigResponse { Response response = 1; TaskSortConfig config = 2; }
+message GetTaskSortConfigRequest {}
+message GetTaskSortConfigResponse { Response response = 1; TaskSortConfig config = 2; }
+
 // 任务服务
 service TaskService {
   // 创建任务
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
-  
   // 获取任务列表
   rpc GetTasks(GetTasksRequest) returns (GetTasksResponse);
-  
   // 获取任务详情
   rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
-  
   // 更新任务
   rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
-  
   // 删除任务
   rpc DeleteTask(DeleteTaskRequest) returns (Response);
+  // 排序配置
+  rpc GetTaskSortConfig(GetTaskSortConfigRequest) returns (GetTaskSortConfigResponse);
+  rpc UpdateTaskSortConfig(UpdateTaskSortConfigRequest) returns (UpdateTaskSortConfigResponse);
 }

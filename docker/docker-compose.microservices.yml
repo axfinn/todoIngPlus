@@ -1,3 +1,8 @@
+# ============================================================================
+# ⚠ 实验/预研文件 (microservices)
+# 当前仓库未包含 ./services/* ./tools/* ./admin-dashboard 等目录，此文件为架构草案。
+# 直接执行会失败，仅供参考，不建议生产使用。
+# ============================================================================
 # TodoIng - 微服务完整方案
 # 包含 API网关、服务发现、消息队列、缓存、监控等
 # 使用: docker-compose -f docker-compose.microservices.yml up -d
@@ -6,7 +11,6 @@ version: '3.8'
 
 services:
   # ==== 基础设施服务 ====
-  
   # 服务发现 - Consul
   consul:
     image: consul:latest
@@ -39,10 +43,10 @@ services:
     container_name: todoing_kong
     restart: always
     ports:
-      - "8000:8000"  # API Gateway
-      - "8001:8001"  # Admin API
-      - "8443:8443"  # HTTPS
-      - "8444:8444"  # Admin HTTPS
+      - "8000:8000"
+      - "8001:8001"
+      - "8443:8443"
+      - "8444:8444"
     environment:
       KONG_DATABASE: postgres
       KONG_PG_HOST: kong-database
@@ -60,14 +64,13 @@ services:
       - todoing_infrastructure_network
       - todoing_api_network
 
-  # 消息队列 - RabbitMQ
   rabbitmq:
     image: rabbitmq:3-management
     container_name: todoing_rabbitmq
     restart: always
     ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # Management UI
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
@@ -77,8 +80,6 @@ services:
       - todoing_infrastructure_network
 
   # ==== 数据存储服务 ====
-  
-  # MongoDB 集群
   mongodb-primary:
     image: mongo:7-jammy
     container_name: todoing_mongodb_primary
@@ -95,7 +96,6 @@ services:
       - todoing_data_network
     command: --replSet rs0 --bind_ip_all
 
-  # Redis 集群
   redis-master:
     image: redis:7-alpine
     container_name: todoing_redis_master
@@ -109,8 +109,6 @@ services:
       - todoing_data_network
 
   # ==== 核心业务服务 ====
-  
-  # 用户认证服务
   auth-service:
     build:
       context: ./services/auth
@@ -137,7 +135,6 @@ services:
       - todoing_data_network
       - todoing_api_network
 
-  # 任务管理服务
   task-service:
     build:
       context: ./services/tasks
@@ -165,7 +162,6 @@ services:
       - todoing_data_network
       - todoing_api_network
 
-  # 报告服务
   report-service:
     build:
       context: ./services/reports
@@ -193,7 +189,6 @@ services:
       - todoing_data_network
       - todoing_api_network
 
-  # 通知服务
   notification-service:
     build:
       context: ./services/notifications
@@ -220,7 +215,6 @@ services:
       - todoing_infrastructure_network
       - todoing_data_network
 
-  # 文件服务
   file-service:
     build:
       context: ./services/files
@@ -248,7 +242,6 @@ services:
       - todoing_data_network
       - todoing_api_network
 
-  # 对象存储 - MinIO
   minio:
     image: minio/minio:latest
     container_name: todoing_minio
@@ -266,8 +259,6 @@ services:
       - todoing_data_network
 
   # ==== 前端服务 ====
-  
-  # 主前端应用
   frontend:
     build:
       context: ./frontend
@@ -284,7 +275,6 @@ services:
     networks:
       - todoing_frontend_network
 
-  # 管理后台
   admin-dashboard:
     build:
       context: ./admin-dashboard
@@ -301,8 +291,6 @@ services:
       - todoing_frontend_network
 
   # ==== 监控服务 ====
-  
-  # Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: todoing_prometheus
@@ -320,7 +308,6 @@ services:
       - todoing_monitoring_network
       - todoing_infrastructure_network
 
-  # Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: todoing_grafana
@@ -337,22 +324,19 @@ services:
     networks:
       - todoing_monitoring_network
 
-  # Jaeger 链路追踪
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: todoing_jaeger
     restart: always
     ports:
-      - "16686:16686"  # Jaeger UI
-      - "14268:14268"  # Jaeger Collector
+      - "16686:16686"
+      - "14268:14268"
     environment:
       COLLECTOR_OTLP_ENABLED: true
     networks:
       - todoing_monitoring_network
 
   # ==== 工具服务 ====
-  
-  # 数据库迁移
   migrator:
     build:
       context: ./tools/migrator
@@ -368,7 +352,6 @@ services:
     profiles:
       - migration
 
-  # 服务健康检查
   healthcheck:
     build:
       context: ./tools/healthcheck

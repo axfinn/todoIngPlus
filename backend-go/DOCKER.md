@@ -449,7 +449,7 @@ docker run --rm todoing-go-test
 
 ## 📞 获取帮助
 
-- **GitHub Issues**: [提交问题](https://github.com/axfinn/todoIng/issues)
+- **GitHub Issues**: [提交问题](https://github.com/axfinn/todoIngPlus/issues)
 - **Docker Hub**: [镜像页面](https://hub.docker.com/r/axiu/todoing-go)
 - **文档**: 查看项目根目录的完整文档
 - **社区**: 加入讨论和交流

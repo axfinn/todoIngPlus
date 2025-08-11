@@ -7,6 +7,9 @@
 # Options:
 #   VERSION=X.Y.Z                          # override version (default: frontend package.json version)
 #   REGISTRY=axiu                          # override registry namespace
+# Options (env vars):
+#   PLATFORMS=linux/amd64,linux/arm64   # multi-arch build
+#   BUILD_ARGS_FRONTEND="VITE_API_BASE_URL=/api VITE_APP_VERSION=auto"
 #
 set -euo pipefail
 
@@ -38,28 +41,101 @@ if ! command -v "$DOCKER" >/dev/null 2>&1; then
   exit 2
 fi
 
+PLATFORMS=${PLATFORMS:-}
+BUILD_ARGS_FRONTEND=${BUILD_ARGS_FRONTEND:-}
+PUSH_FLAG=${PUSH_FLAG:-false}
+
+ensure_builder() {
+  if [[ -n "$PLATFORMS" ]]; then
+    if ! docker buildx inspect todoing-builder >/dev/null 2>&1; then
+      echo "==> Creating buildx builder (todoing-builder)"
+      docker buildx create --name todoing-builder --use --driver docker-container
+    else
+      docker buildx use todoing-builder
+    fi
+  fi
+}
+
+version_exists() {
+  local img=$1
+  if docker manifest inspect "$img" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+parse_frontend_build_args() {
+  local args=()
+  if [[ -n "$BUILD_ARGS_FRONTEND" ]]; then
+    for kv in $BUILD_ARGS_FRONTEND; do
+      key=${kv%%=*}
+      val=${kv#*=}
+      args+=(--build-arg "$key=$val")
+    done
+  fi
+  echo "${args[@]}"
+}
+
+warn_if_overwrite() {
+  for img in "$BACKEND_IMAGE" "$FRONTEND_IMAGE"; do
+    if version_exists "$img"; then
+      echo "[WARN] Image tag already exists in registry: $img (will rebuild / overwrite if pushed)" >&2
+    fi
+  done
+}
+
 do_build() {
+  ensure_builder
+  warn_if_overwrite
   local pullFlag="--pull"
   if [[ "${NO_PULL:-}" == "1" ]]; then
     echo "NO_PULL=1 detected -> skipping --pull (using local base images)"
     pullFlag=""
   fi
+  local f_args
+  f_args=$(parse_frontend_build_args)
+
+  if [[ -n "$PLATFORMS" ]]; then
+    echo "==> Multi-arch build platforms: $PLATFORMS"
+  fi
+
   echo "==> Building backend image: $BACKEND_IMAGE"
-  $DOCKER build \
-    ${pullFlag} \
-    -t "$BACKEND_IMAGE" \
-    -t "$REGISTRY/todoing-go:latest" \
-    -f backend-go/Dockerfile \
-    --target production \
-    backend-go
+  if [[ -n "$PLATFORMS" ]]; then
+    docker buildx build \
+      --platform "$PLATFORMS" \
+      $pullFlag \
+      -t "$BACKEND_IMAGE" \
+      -t "$REGISTRY/todoing-go:latest" \
+      -f backend-go/Dockerfile \
+      --target production \
+      backend-go ${PUSH_FLAG:+--push}
+  else
+    docker build $pullFlag \
+      -t "$BACKEND_IMAGE" \
+      -t "$REGISTRY/todoing-go:latest" \
+      -f backend-go/Dockerfile \
+      --target production \
+      backend-go
+  fi
 
   echo "==> Building frontend image: $FRONTEND_IMAGE"
-  $DOCKER build \
-    ${pullFlag} \
-    -t "$FRONTEND_IMAGE" \
-    -t "$REGISTRY/todoing-frontend:latest" \
-    -f frontend/Dockerfile \
-    frontend
+  if [[ -n "$PLATFORMS" ]]; then
+    docker buildx build \
+      --platform "$PLATFORMS" \
+      $pullFlag \
+      -t "$FRONTEND_IMAGE" \
+      -t "$REGISTRY/todoing-frontend:latest" \
+      -f frontend/Dockerfile \
+      $f_args \
+      frontend ${PUSH_FLAG:+--push}
+  else
+    docker build $pullFlag \
+      -t "$FRONTEND_IMAGE" \
+      -t "$REGISTRY/todoing-frontend:latest" \
+      -f frontend/Dockerfile \
+      $f_args \
+      frontend
+  fi
 }
 
 do_push() {
@@ -79,7 +155,7 @@ case "${1:-}" in
     do_push
     ;;
   release)
-    do_build
+    PUSH_FLAG=true do_build
     do_push
     ;;
   *)

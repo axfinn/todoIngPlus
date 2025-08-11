@@ -13,7 +13,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/models"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

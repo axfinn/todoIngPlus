@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axfinn/todoIng/backend-go/internal/captcha"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/captcha"
 	"github.com/gorilla/mux"
 )
 
