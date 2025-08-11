@@ -1,390 +1,136 @@
-# TodoIng 技术架构文档
+# TodoIng 技术架构（当前实现版）
 
-## 概述
+> 本文件已重写以与实际代码保持一致；旧版中提到的微服务、WebSocket、repository 深层分层、Redis、OpenAI、Zap、Viper 等尚未实现或已移除。更完整叙述参见：`architecture.md`、`database-design.md`、`reminder-module.md`。
 
-TodoIng 是一个基于现代技术栈构建的任务管理系统，采用前后端分离架构，使用 Golang 作为后端主要技术栈，React + TypeScript 作为前端技术栈。
+## 总览
 
-## 技术架构
+当前形态：单体 Go HTTP API + React 前端 + MongoDB。
 
-### 整体架构设计
+- 后端：Go 1.23，`gorilla/mux` 路由，中间件 (Logging / Recover / Auth)；SSE 用于实时通知。
+- 前端：React + TS + Redux Toolkit + Vite；使用 EventSource 订阅通知。
+- 数据库：MongoDB（集合：users, tasks, events, reminders, reports, notifications）。
+- 调度：内部 `time.Ticker` 每分钟扫描 reminders。
+- 认证：JWT + 可选图片验证码 + 邮箱验证码。
+- 邮件：通用 `EMAIL_*` + 可选 `REMINDER_EMAIL_*` 覆盖。
 
-```text
-┌─────────────────┐     HTTP/HTTPS     ┌─────────────────┐
-│                 │◄──────────────────►│                 │
-│   React 前端    │    RESTful API     │  Golang 后端   │
-│   (TypeScript)  │                    │                 │
-│                 │◄──────────────────►│                 │
-└─────────────────┘     WebSocket      └─────────────────┘
-         │                                       │
-         │                                       │
-         ▼                                       ▼
-┌─────────────────┐                    ┌─────────────────┐
-│                 │                    │                 │
-│  静态资源存储   │                    │   MongoDB       │
-│   (可选)        │                    │   数据库        │
-│                 │                    │                 │
-└─────────────────┘                    └─────────────────┘
-                                                │
-                                                │
-                                                ▼
-                                       ┌─────────────────┐
-                                       │                 │
-                                       │   第三方服务    │
-                                       │ • OpenAI API    │
-                                       │ • 邮件服务      │
-                                       │ • 文件存储      │
-                                       └─────────────────┘
-```
-
-## 前端架构
-
-### 技术栈
-
-| 技术 | 版本 | 描述 | 用途 |
-|------|------|------|------|
-| **React** | 18+ | 现代化UI框架 | 用户界面构建 |
-| **TypeScript** | 5+ | 静态类型检查 | 代码质量保证 |
-| **Redux Toolkit** | 1.9+ | 状态管理 | 全局状态管理 |
-| **React Router** | v6 | 前端路由 | SPA路由管理 |
-| **Bootstrap** | 5+ | UI组件库 | 界面样式 |
-| **Vite** | 4+ | 构建工具 | 快速开发构建 |
-| **Axios** | 1.4+ | HTTP客户端 | API请求 |
-| **i18next** | 22+ | 国际化 | 多语言支持 |
-
-### 目录结构
+## 组件关系（简化）
 
 ```text
-frontend/
-├── public/                 # 静态资源
-├── src/
-│   ├── components/         # 可复用组件
-│   ├── pages/             # 页面组件
-│   ├── store/             # Redux store
-│   ├── services/          # API服务
-│   ├── hooks/             # 自定义hooks
-│   ├── utils/             # 工具函数
-│   ├── types/             # TypeScript类型定义
-│   ├── i18n/              # 国际化配置
-│   └── assets/            # 静态资源
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── Dockerfile
+[ React (Vite) ] -- REST --> [ Go API (mux) ] -- Mongo Driver --> [ MongoDB ]
+        |                             |
+        '---- SSE (EventSource)  <-----'
 ```
 
-### 状态管理
-
-使用 Redux Toolkit 进行状态管理：
-
-- **Auth Store**: 用户认证状态
-- **Todo Store**: 任务管理状态  
-- **UI Store**: 界面状态（主题、语言等）
-- **Report Store**: 报告数据状态
-
-## 后端架构 (Golang)
-
-### 技术栈
-
-| 技术 | 版本 | 描述 | 用途 |
-|------|------|------|------|
-| **Go** | 1.23+ | 编程语言 | 后端主要开发语言 |
-| **Gin/Gorilla Mux** | - | Web框架 | HTTP路由和中间件 |
-| **MongoDB Driver** | 1.15+ | 数据库驱动 | 数据库连接和操作 |
-| **JWT-Go** | 5.2+ | JWT处理 | 用户认证 |
-| **gRPC** | 1.74+ | RPC框架 | 微服务通信 (可选) |
-| **Swagger** | 1.16+ | API文档 | 自动生成API文档 |
-| **Zap** | 1.27+ | 日志库 | 结构化日志 |
-| **Viper** | 1.18+ | 配置管理 | 配置文件处理 |
-
-### 目录结构
+## 后端目录实际结构
 
 ```text
-backend-go/
-├── cmd/                   # 应用程序入口
-│   └── server/
-├── internal/              # 私有应用程序代码
-│   ├── handler/           # HTTP处理器
-│   ├── service/           # 业务逻辑
-│   ├── repository/        # 数据访问层
-│   ├── model/            # 数据模型
-│   ├── middleware/       # 中间件
-│   └── config/           # 配置
-├── pkg/                  # 可重用的包
-│   ├── auth/             # 认证相关
-│   ├── email/            # 邮件服务
-│   ├── logger/           # 日志
-│   └── validator/        # 验证器
-├── api/                  # API定义
-│   ├── rest/             # REST API
-│   └── grpc/             # gRPC定义 (可选)
-├── docs/                 # Swagger文档
-├── scripts/              # 构建脚本
-├── test/                 # 测试文件
-├── go.mod
-├── go.sum
-├── Dockerfile
-└── Makefile
+cmd/api/main.go          # 入口
+internal/api             # 处理器 (auth/tasks/events/reminders/unified/notifications/...)
+internal/auth            # JWT / token 解析
+internal/captcha         # 图片验证码
+internal/email           # 邮件发送 & 覆盖逻辑
+internal/notifications   # SSE hub
+internal/services        # 组合 / 聚合逻辑 (unified, dashboard, reminder scheduler helper)
+internal/models          # 数据模型
+internal/observability   # 日志（轻量封装）
 ```
 
-### 架构层次
+(旧文档的 `handler/service/repository` 典型分层与 `cmd/server` 入口已废弃。)
 
-```text
-┌─────────────────────────────────────────┐
-│              HTTP Layer                 │
-│  (Gin/Gorilla Mux + Middleware)       │
-└─────────────────────────────────────────┘
-                     │
-┌─────────────────────────────────────────┐
-│             Handler Layer               │
-│        (REST API Controllers)          │
-└─────────────────────────────────────────┘
-                     │
-┌─────────────────────────────────────────┐
-│             Service Layer               │
-│          (Business Logic)              │
-└─────────────────────────────────────────┘
-                     │
-┌─────────────────────────────────────────┐
-│           Repository Layer              │
-│         (Data Access Layer)            │
-└─────────────────────────────────────────┘
-                     │
-┌─────────────────────────────────────────┐
-│            Database Layer               │
-│              (MongoDB)                 │
-└─────────────────────────────────────────┘
-```
+## 核心模块说明
 
-## 数据库设计
+| 模块 | 关键文件 | 说明 |
+|------|----------|------|
+| 认证 & 用户初始化 | `internal/api/auth_handlers.go` / `internal/auth/jwt.go` | 登录/注册/验证码，缺用户时创建默认账户 |
+| 任务 & 事件 | `internal/api/tasks_handlers.go` / `internal/api/event_routes.go` | 基础 CRUD |
+| 提醒系统 | `internal/api/reminder_handlers.go` | 创建/列出/测试；scheduler 周期扫描发送 |
+| 调度逻辑 | scheduler（main 中初始化） | `next_send` 条件查询并更新 |
+| 通知 (SSE) | `internal/api/notification_handlers.go` + `internal/notifications` | 服务器推事件，前端 EventSource 接收 |
+| 统一聚合 | `internal/api/unified_handlers.go` + `internal/services/unified_service.go` | upcoming + calendar 聚合多个源 |
+| 仪表盘 | `internal/api/dashboard_handlers.go` | 汇总统计 |
+| 邮件发送 | `internal/email/email.go` | 验证码 & 通知邮件，支持双配置组 |
 
-### MongoDB 集合设计
+## 与旧架构文档差异对照
 
-#### Users 集合
-```javascript
-{
-  "_id": ObjectId,
-  "username": String,           // 用户名
-  "email": String,             // 邮箱 (唯一)
-  "password": String,          // 加密密码
-  "role": String,              // 用户角色
-  "avatar": String,            // 头像URL
-  "settings": {                // 用户设置
-    "language": String,
-    "theme": String,
-    "timezone": String
-  },
-  "email_verified": Boolean,   // 邮箱验证状态
-  "created_at": Date,
-  "updated_at": Date
+| 旧描述 | 现状 | 说明 |
+|--------|------|------|
+| WebSocket 实时 | 使用 SSE | `EventSource` 简化，无自定义协议握手需求 |
+| repository 层 | 省略 | 直接 Mongo 调用 + 轻量 services |
+| Redis 缓存 | 未实现 | 后续如需会在高频查询/排行榜加入 |
+| OpenAI 集成功能 | 未实现 | 移除示例配置，规划阶段 |
+| Zap / Viper | 未使用 | 自定义轻量日志 & 直接 `os.Getenv` |
+| Rate limiting | 未实现 | 可后续在中间件补充 |
+| WebSocket 离线队列 | 未实现 | SSE 不做离线；将来可用消息队列/Redis PubSub |
+| gRPC 微服务通信 | 备用入口存在 | 非主路径；当前单体充分 |
+
+## 数据模型（摘录）
+
+> 全量详见 `database-design.md`。
+
+```go
+// Reminder 关键字段
+type Reminder struct {
+    ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+    EventID    *primitive.ObjectID `bson:"event_id,omitempty" json:"event_id,omitempty"`
+    UserID     primitive.ObjectID  `bson:"user_id" json:"user_id"`
+    Title      string              `bson:"title" json:"title"`
+    ReminderType string            `bson:"reminder_type" json:"reminder_type"`
+    NextSend   *time.Time          `bson:"next_send" json:"next_send"`
+    IsActive   bool                `bson:"is_active" json:"is_active"`
+    CreatedAt  time.Time           `bson:"created_at" json:"created_at"`
+    UpdatedAt  time.Time           `bson:"updated_at" json:"updated_at"`
 }
 ```
 
-#### Todos 集合
-```javascript
-{
-  "_id": ObjectId,
-  "title": String,             // 任务标题
-  "description": String,       // 任务描述
-  "status": String,            // 状态: pending/in_progress/completed
-  "priority": String,          // 优先级: low/medium/high
-  "tags": [String],           // 标签数组
-  "user_id": ObjectId,        // 关联用户ID
-  "due_date": Date,           // 截止日期
-  "completed_at": Date,       // 完成时间
-  "history": [{               // 变更历史
-    "action": String,         // 操作类型
-    "changes": Object,        // 变更内容
-    "timestamp": Date,
-    "user_id": ObjectId
-  }],
-  "created_at": Date,
-  "updated_at": Date
-}
-```
+## 通知机制 (SSE)
 
-#### Reports 集合
-```javascript
-{
-  "_id": ObjectId,
-  "user_id": ObjectId,        // 关联用户ID
-  "type": String,             // 报告类型: daily/weekly/monthly
-  "period": {                 // 报告周期
-    "start": Date,
-    "end": Date
-  },
-  "content": String,          // 报告内容
-  "ai_enhanced": Boolean,     // 是否AI增强
-  "statistics": {             // 统计数据
-    "total_tasks": Number,
-    "completed_tasks": Number,
-    "pending_tasks": Number
-  },
-  "created_at": Date
-}
-```
+- 前端：`EventSource('/api/notifications/stream?token=JWT')`
+- 服务端：保持长连接，定期/事件触发写入 `event: notification\ndata: {...}\n\n`
+- 响应头：`Content-Type: text/event-stream`, `Cache-Control: no-cache`
+- 中间件确保 `Flush()` 可用
 
-## 安全设计
+## 提醒调度流程
 
-### 认证与授权
+1. Ticker 触发扫描：`is_active=true AND next_send <= now`
+2. 生成邮件 / SSE 通知
+3. 更新 reminder：`last_sent` & 计算下一个 `next_send`
+4. 测试提醒：临时事件，不持久化主事件集合
 
-1. **JWT Token认证**
-   - 使用HS256算法签名
-   - Token过期时间: 24小时
-   - 支持Token刷新机制
+## 聚合 (Unified) 简述
 
-2. **密码安全**
-   - 使用bcrypt加密
-   - 密码强度验证
-   - 支持密码重置
+- upcoming：聚合 tasks/events/reminders 未来窗口内条目，按时间排序
+- calendar：按日 bucket，支持源过滤与数量限制
+- `debug=1` 返回窗口参数与范围
 
-3. **API安全**
-   - CORS跨域保护
-   - Rate Limiting防止API滥用
-   - 输入验证和SQL注入防护
+## 安全要点
 
-### 数据保护
+| 方面 | 当前实现 |
+|------|----------|
+| 认证 | JWT (HS256) |
+| 验证码 | 图片 + 邮箱（可开关） |
+| 授权 | 用户资源隔离：查询按 `user_id` 过滤 |
+| 速率限制 | 未实现 |
+| RBAC | 暂无复杂角色；默认用户为 admin 用于初始管理 |
 
-1. **数据加密**
-   - 敏感数据加密存储
-   - HTTPS传输加密
-   - 数据库连接加密
+## 性能与扩展计划（Roadmap）
 
-2. **访问控制**
-   - 基于角色的访问控制(RBAC)
-   - 资源级权限控制
-   - 审计日志记录
+| 项目 | 状态 | 计划 |
+|------|------|------|
+| Reminder 扫描效率 | 基础 | 添加索引 (`is_active`, `next_send`) 已在设计中 |
+| SSE 横向扩展 | 待做 | 借助 Redis Pub/Sub 或内存分片广播 |
+| 缓存层 (Redis) | 待做 | 统一聚合结果短期缓存 |
+| 指标监控 | 待做 | 暴露 `/metrics` Prometheus 指标 |
+| Rate Limiting | 待做 | Token 桶中间件 |
+| 任务/事件高级搜索 | 规划 | 建立文本索引/ES 集成 |
 
-## 部署架构
+## 文件引用
 
-### Docker容器化
-
-```yaml
-# docker-compose.golang.yml
-services:
-  backend:
-    image: todoing-backend-go
-    ports:
-      - "5004:5004"
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/todoing
-      - JWT_SECRET=${JWT_SECRET}
-    
-  frontend:
-    image: todoing-frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-      
-  mongodb:
-    image: mongo:7
-    volumes:
-      - mongodb_data:/data/db
-```
-
-### 生产环境部署
-
-1. **负载均衡**: Nginx反向代理
-2. **数据库**: MongoDB集群
-3. **缓存**: Redis (可选)
-4. **监控**: Prometheus + Grafana
-5. **日志**: ELK Stack
-
-## 开发工作流
-
-### 环境配置
-
-1. **开发环境**
-   ```bash
-   # 后端开发
-   cd backend-go
-   go run cmd/server/main.go
-   
-   # 前端开发  
-   cd frontend
-   npm run dev
-   ```
-
-2. **测试环境**
-   ```bash
-   # 单元测试
-   go test ./...
-   npm test
-   
-   # 集成测试
-   docker-compose -f docker-compose.dev.yml up
-   ```
-
-3. **生产环境**
-   ```bash
-   # 构建部署
-   docker-compose -f docker-compose.golang.yml up -d
-   ```
-
-### 代码规范
-
-1. **Go代码规范**
-   - 使用gofmt格式化
-   - 使用golint检查
-   - 遵循Go最佳实践
-
-2. **TypeScript代码规范**
-   - 使用ESLint + Prettier
-   - 遵循React最佳实践
-   - 使用TypeScript严格模式
-
-## 性能优化
-
-### 后端优化
-
-1. **数据库优化**
-   - 合理设计索引
-   - 查询优化
-   - 连接池管理
-
-2. **缓存策略**
-   - Redis缓存
-   - 内存缓存
-   - CDN缓存
-
-### 前端优化
-
-1. **构建优化**
-   - 代码分割
-   - 懒加载
-   - 资源压缩
-
-2. **运行时优化**
-   - 虚拟滚动
-   - 防抖节流
-   - 内存优化
-
-## 监控与日志
-
-### 应用监控
-
-1. **性能监控**
-   - API响应时间
-   - 数据库查询性能
-   - 内存和CPU使用率
-
-2. **业务监控**
-   - 用户行为分析
-   - 错误率统计
-   - 功能使用情况
-
-### 日志管理
-
-1. **结构化日志**
-   - 使用Zap记录结构化日志
-   - 日志级别管理
-   - 日志轮转和归档
-
-2. **错误追踪**
-   - 错误堆栈记录
-   - 用户操作链路追踪
-   - 异常告警机制
+- 架构：`docs/architecture.md`
+- 数据库：`docs/database-design.md`
+- 配置：`docs/configuration.md`
+- 提醒：`docs/reminder-module.md`
+- 统一聚合：源代码 `internal/api/unified_handlers.go`
 
 ---
 
-*该文档将随着项目发展持续更新，确保架构设计与实际实现保持一致。*
+本文件旨在取代旧版 `technical-architecture.md` 过时内容，随实现演进更新。
