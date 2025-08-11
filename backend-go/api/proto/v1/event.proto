@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package todoing.api.v1;
+
+option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1"; // 与现有保持一致 (注意仓库实际名 todoIngPlus)
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// 事件类型
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_BIRTHDAY = 1;
+  EVENT_TYPE_ANNIVERSARY = 2;
+  EVENT_TYPE_HOLIDAY = 3;
+  EVENT_TYPE_CUSTOM = 4;
+  EVENT_TYPE_MEETING = 5;
+  EVENT_TYPE_DEADLINE = 6;
+}
+
+// 循环类型
+enum RecurrenceType {
+  RECURRENCE_TYPE_UNSPECIFIED = 0; // 兼容
+  RECURRENCE_TYPE_NONE = 1;
+  RECURRENCE_TYPE_YEARLY = 2;
+  RECURRENCE_TYPE_MONTHLY = 3;
+  RECURRENCE_TYPE_WEEKLY = 4;
+  RECURRENCE_TYPE_DAILY = 5;
+}
+
+// 事件
+message Event {
+  string id = 1;
+  string user_id = 2;
+  string title = 3;
+  string description = 4;
+  EventType event_type = 5;
+  google.protobuf.Timestamp event_date = 6;
+  RecurrenceType recurrence_type = 7; // none 则为一次性
+  map<string, string> recurrence_config = 8; // 预留 (例如 day, interval)
+  int32 importance_level = 9; // 1-5
+  repeated string tags = 10;
+  string location = 11;
+  bool is_all_day = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+  bool is_active = 15;
+  google.protobuf.Timestamp last_triggered_at = 16; // 可为空
+}
+
+// 创建事件
+message CreateEventRequest {
+  string title = 1;
+  string description = 2;
+  EventType event_type = 3;
+  google.protobuf.Timestamp event_date = 4;
+  RecurrenceType recurrence_type = 5; // 可选
+  map<string, string> recurrence_config = 6;
+  int32 importance_level = 7;
+  repeated string tags = 8;
+  string location = 9;
+  bool is_all_day = 10;
+}
+message CreateEventResponse { Response response = 1; Event event = 2; }
+
+// 获取事件
+message GetEventRequest { string id = 1; }
+message GetEventResponse { Response response = 1; Event event = 2; }
+
+// 更新事件 (全部可选)
+message UpdateEventRequest {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  EventType event_type = 4;
+  google.protobuf.Timestamp event_date = 5;
+  RecurrenceType recurrence_type = 6;
+  map<string, string> recurrence_config = 7;
+  int32 importance_level = 8;
+  repeated string tags = 9;
+  string location = 10;
+  bool is_all_day = 11;
+  bool is_active = 12;
+}
+message UpdateEventResponse { Response response = 1; Event event = 2; }
+
+// 删除事件
+message DeleteEventRequest { string id = 1; }
+
+// 列表 & 过滤
+message ListEventsRequest {
+  PaginationRequest pagination = 1;
+  EventType event_type = 2;
+  bool upcoming_only = 3; // 仅未来
+  bool active_only = 4; // is_active
+}
+message ListEventsResponse {
+  Response response = 1;
+  repeated Event events = 2;
+  PaginationResponse pagination = 3;
+}
+
+// 即将到来的事件 (按天数窗口)
+message GetUpcomingEventsRequest { int32 days = 1; } // 默认 7
+message GetUpcomingEventsResponse { Response response = 1; repeated Event events = 2; int32 days = 3; }
+
+// 日历 (指定年/月)
+message GetCalendarEventsRequest { int32 year = 1; int32 month = 2; }
+message CalendarDayEvents { string date = 1; repeated Event events = 2; }
+message GetCalendarEventsResponse { Response response = 1; int32 year = 2; int32 month = 3; repeated CalendarDayEvents days = 4; }
+
+// 事件评论 / 时间线
+enum EventCommentType {
+  EVENT_COMMENT_TYPE_UNSPECIFIED = 0;
+  EVENT_COMMENT_TYPE_TEXT = 1;
+  EVENT_COMMENT_TYPE_SYSTEM = 2;
+}
+message EventComment {
+  string id = 1;
+  string event_id = 2;
+  string user_id = 3;
+  EventCommentType type = 4;
+  string content = 5;
+  map<string,string> meta = 6; // system 元数据
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+message AddEventCommentRequest { string event_id = 1; string content = 2; }
+message AddEventCommentResponse { Response response = 1; EventComment comment = 2; }
+message UpdateEventCommentRequest { string comment_id = 1; string content = 2; }
+message UpdateEventCommentResponse { Response response = 1; EventComment comment = 2; }
+message DeleteEventCommentRequest { string comment_id = 1; }
+
+message ListEventTimelineRequest { string event_id = 1; int32 limit = 2; string before_id = 3; }
+message ListEventTimelineResponse { Response response = 1; repeated EventComment items = 2; int32 count = 3; }
+
+service EventService {
+  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+  rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse);
+  rpc DeleteEvent(DeleteEventRequest) returns (Response);
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  rpc GetUpcomingEvents(GetUpcomingEventsRequest) returns (GetUpcomingEventsResponse);
+  rpc GetCalendarEvents(GetCalendarEventsRequest) returns (GetCalendarEventsResponse);
+  rpc AddEventComment(AddEventCommentRequest) returns (AddEventCommentResponse);
+  rpc UpdateEventComment(UpdateEventCommentRequest) returns (UpdateEventCommentResponse);
+  rpc DeleteEventComment(DeleteEventCommentRequest) returns (Response);
+  rpc ListEventTimeline(ListEventTimelineRequest) returns (ListEventTimelineResponse);
+}

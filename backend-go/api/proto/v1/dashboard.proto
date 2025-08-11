@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package todoing.api.v1;
+
+option go_package = "github.com/axfinn/todoIng/backend-go/pkg/api/v1";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+import "task.proto";
+import "event.proto";
+import "reminder.proto";
+
+// 事件摘要
+message EventSummary {
+  int64 total_events = 1;
+  int64 upcoming_count = 2;
+  int64 today_count = 3;
+  map<string,int64> type_breakdown = 4;
+}
+
+// 任务摘要
+message TaskSummary {
+  int64 total_tasks = 1;
+  double completed_rate = 2;
+  int64 overdue_count = 3;
+  map<string,int64> status_counts = 4;
+}
+
+// Dashboard 数据聚合
+message DashboardData {
+  repeated Event upcoming_events = 1;
+  repeated PriorityTask priority_tasks = 2;
+  repeated UpcomingReminder pending_reminders = 3; // 来自 reminder.proto 的 upcoming
+  EventSummary event_summary = 4;
+  TaskSummary task_summary = 5;
+}
+
+message GetDashboardDataRequest {}
+message GetDashboardDataResponse { Response response = 1; DashboardData data = 2; }
+
+message GetPriorityTasksRequest {}
+message GetPriorityTasksResponse { Response response = 1; repeated PriorityTask tasks = 2; int32 total = 3; }
+
+service DashboardService {
+  rpc GetDashboardData(GetDashboardDataRequest) returns (GetDashboardDataResponse);
+  rpc GetPriorityTasks(GetPriorityTasksRequest) returns (GetPriorityTasksResponse);
+  // TaskSortConfig 复用 TaskService 的 RPC（避免重复）
+}
