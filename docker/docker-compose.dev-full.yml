@@ -1,6 +1,5 @@
-# TodoIng - 全栈开发环境
-# 包含前端热重载、后端调试、数据库管理等开发工具
-# 使用: docker-compose -f docker-compose.dev-full.yml up -d
+# TodoIng - 全栈开发环境 (Golang)
+# 使用: docker-compose -f docker-compose.dev-full.yml up -d --profile golang
 
 version: '3.8'
 
@@ -18,8 +17,6 @@ services:
       MONGO_INITDB_DATABASE: todoing
     volumes:
       - mongodb_data_dev:/data/db
-      - ./scripts/mongo-init-dev.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-      - ./data/sample:/docker-entrypoint-initdb.d/sample:ro
     networks:
       - todoing_dev_network
 
@@ -36,54 +33,17 @@ services:
     networks:
       - todoing_dev_network
 
-  # Node.js 后端 (开发模式)
-  backend-nodejs-dev:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-      target: development
-    container_name: todoing_backend_nodejs_dev
-    restart: unless-stopped
-    ports:
-      - "5001:5001"
-      - "9229:9229"  # Node.js Debug port
-    environment:
-      NODE_ENV: development
-      PORT: 5001
-      MONGO_URI: mongodb://admin:admin123@mongodb-dev:27017/todoing?authSource=admin
-      REDIS_URL: redis://redis-dev:6379
-      JWT_SECRET: dev_jwt_secret_change_me
-      DISABLE_REGISTRATION: false
-      ENABLE_CAPTCHA: false  # 开发时关闭验证码
-      ENABLE_EMAIL_VERIFICATION: false
-      DEFAULT_USERNAME: admin
-      DEFAULT_EMAIL: admin@dev.com
-      DEFAULT_PASSWORD: admin123
-      LOG_LEVEL: debug
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-      - ./logs/nodejs-dev:/app/logs
-    depends_on:
-      - mongodb-dev
-      - redis-dev
-    networks:
-      - todoing_dev_network
-    command: npm run dev
-    profiles:
-      - nodejs
-
   # Golang 后端 (开发模式)
   backend-golang-dev:
     build:
-      context: ./backend-go
+      context: ../backend-go
       dockerfile: Dockerfile.dev
       target: development
     container_name: todoing_backend_golang_dev
     restart: unless-stopped
     ports:
       - "5004:5004"
-      - "2345:2345"  # Delve Debug port
+      - "2345:2345"  # Delve Debug
     environment:
       PORT: 5004
       GIN_MODE: debug
@@ -99,7 +59,7 @@ services:
       LOG_LEVEL: debug
       CGO_ENABLED: 1
     volumes:
-      - ./backend-go:/app
+      - ../backend-go:/app
       - go_modules_cache:/go/pkg/mod
       - ./logs/golang-dev:/app/logs
     depends_on:
@@ -114,7 +74,7 @@ services:
   # 前端开发服务 (Vite热重载)
   frontend-dev:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: Dockerfile.dev
       target: development
     container_name: todoing_frontend_dev
@@ -123,16 +83,14 @@ services:
       - "3000:3000"
       - "24678:24678"  # Vite HMR
     environment:
-      VITE_API_BASE_URL: http://localhost:5004/api  # 默认使用Go后端
-      VITE_NODEJS_API_URL: http://localhost:5001/api
-      VITE_GOLANG_API_URL: http://localhost:5004/api
+      VITE_API_BASE_URL: http://localhost:5004/api
       VITE_DISABLE_REGISTRATION: false
       VITE_ENABLE_CAPTCHA: false
       VITE_APP_NAME: TodoIng Dev
       VITE_APP_VERSION: dev
       NODE_ENV: development
     volumes:
-      - ./frontend:/app
+      - ../frontend:/app
       - /app/node_modules
       - /app/dist
     networks:
@@ -179,23 +137,23 @@ services:
     container_name: todoing_mailhog
     restart: unless-stopped
     ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
+      - "1025:1025"
+      - "8025:8025"
     networks:
       - todoing_dev_network
 
   # 文档服务 (API文档)
   docs:
     build:
-      context: ./docs
+      context: ../docs
       dockerfile: Dockerfile
     container_name: todoing_docs
     restart: unless-stopped
     ports:
       - "4000:80"
     volumes:
-      - ./docs:/usr/share/nginx/html:ro
-      - ./backend-go/docs:/usr/share/nginx/html/api:ro
+      - ../docs:/usr/share/nginx/html:ro
+      - ../backend-go/docs:/usr/share/nginx/html/api:ro
     networks:
       - todoing_dev_network
 
@@ -234,16 +192,9 @@ services:
 networks:
   todoing_dev_network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.22.0.0/16
 
 volumes:
   mongodb_data_dev:
-    driver: local
   mongodb_test_data:
-    driver: local
   redis_data_dev:
-    driver: local
   go_modules_cache:
-    driver: local

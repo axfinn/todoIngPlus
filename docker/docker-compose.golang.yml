@@ -75,7 +75,7 @@ services:
         condition: service_healthy
     volumes:
       - ./logs/golang:/app/logs
-      - ./backend-go/configs:/app/configs:ro
+      - ../backend-go/configs:/app/configs:ro
     networks:
       - todoing_golang_network
     healthcheck:
@@ -85,10 +85,11 @@ services:
       retries: 3
       start_period: 60s
 
-  # gRPC 服务 (可选)
+  # gRPC 服务 (可选) - 与主二进制一致，如需拆分需在代码中区分启动模式
   grpc-server:
+    image: ${GOLANG_BACKEND_IMAGE:-axiu/todoing-go:latest}
     build:
-      context: ./backend-go
+      context: ../backend-go
       dockerfile: Dockerfile
       target: grpc
     container_name: todoing_grpc_golang
