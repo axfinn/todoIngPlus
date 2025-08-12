@@ -240,14 +240,14 @@ func (s *ReportServiceServer) ExportReport(ctx context.Context, req *pb.ExportRe
 		b.WriteString(fmt.Sprintf("Period: %s  Range: %s ~ %s  GeneratedAt: %s\n\n", r.Type, start.Format("2006-01-02"), end.Format("2006-01-02"), time.Now().Format(time.RFC3339)))
 		b.WriteString("## Task Statistics\n")
 		b.WriteString(fmt.Sprintf("- Total: %d\n- Completed: %d\n- In Progress: %d\n- Overdue: %d\n- Completion Rate: %d%%\n\n", r.Statistics.TotalTasks, r.Statistics.CompletedTasks, r.Statistics.InProgressTasks, r.Statistics.OverdueTasks, r.Statistics.CompletionRate))
-		b.WriteString("## Events ("+fmt.Sprintf("%d", len(events))+ ")\n")
+		b.WriteString("## Events (" + fmt.Sprintf("%d", len(events)) + ")\n")
 		for _, ev := range events {
 			b.WriteString(fmt.Sprintf("- %s | %s | %s | Importance:%d\n", ev.EventDate.Format(time.RFC3339), ev.Title, ev.EventType, ev.ImportanceLevel))
 		}
 		if len(events) == 0 {
 			b.WriteString("(none)\n")
 		}
-		b.WriteString("\n## Reminders ("+fmt.Sprintf("%d", len(reminders))+ ")\n")
+		b.WriteString("\n## Reminders (" + fmt.Sprintf("%d", len(reminders)) + ")\n")
 		for _, rm := range reminders {
 			var nextSend string
 			if rm.NextSend != nil {

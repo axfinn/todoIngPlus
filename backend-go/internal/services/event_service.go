@@ -102,9 +102,13 @@ func (s *EventService) UpdateEvent(ctx context.Context, userID, eventID primitiv
 	return s.repo.UpdateFields(ctx, userID, eventID, set)
 }
 
-func (s *EventService) DeleteEvent(ctx context.Context, userID, eventID primitive.ObjectID) error { return s.repo.Delete(ctx, userID, eventID) }
+func (s *EventService) DeleteEvent(ctx context.Context, userID, eventID primitive.ObjectID) error {
+	return s.repo.Delete(ctx, userID, eventID)
+}
 
-func (s *EventService) AdvanceEvent(ctx context.Context, userID, eventID primitive.ObjectID, reason string) (*models.Event, error) { return s.repo.Advance(ctx, userID, eventID, reason) }
+func (s *EventService) AdvanceEvent(ctx context.Context, userID, eventID primitive.ObjectID, reason string) (*models.Event, error) {
+	return s.repo.Advance(ctx, userID, eventID, reason)
+}
 
 func (s *EventService) ListEvents(ctx context.Context, userID primitive.ObjectID, page, pageSize int, eventType string, startDate, endDate *time.Time) (*models.EventListResponse, error) {
 	return s.repo.ListPaged(ctx, userID, page, pageSize, eventType, startDate, endDate)
