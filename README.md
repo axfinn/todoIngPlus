@@ -1,4 +1,6 @@
-# TodoIng Plus v0.0.2
+# TodoIng Plus v0.0.3
+
+<!-- v0.0.3: 前端支持随机更换背景 + container-xl 布局统一；详见 CHANGELOG.md -->
 
 <!-- v0.0.2: 引入 Repository 层 (Event/Reminder) + Reminder Preview & Immediate Test + Unified 聚合改造，详见 CHANGELOG.md -->
 
