@@ -195,15 +195,15 @@ const DashboardPage: React.FC = () => {
           text: text.trim(),
           createdAt: new Date().toISOString()
         };
-        const updatedTask = {
-          ...task,
+        // 仅发送需要更新的字段和新的 comments 列表，避免覆盖 createdAt
+        dispatch(updateTask({
+          _id: task._id,
           comments: [...(task.comments || []), newComment]
-        };
-        dispatch(updateTask(updatedTask));
-        setCommentText({
-          ...commentText,
+        } as any));
+        setCommentText(prev => ({
+          ...prev,
           [taskId]: ''
-        });
+        }));
       }
     }
   };
