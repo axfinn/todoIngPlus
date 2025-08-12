@@ -335,7 +335,7 @@ const EventsPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="container-fluid mt-4 panel-wrap">
+    <div className="container-xl mt-4 panel-wrap">
       <div className="panel-content">
       <div className="row mb-4">
         <div className="col-12 d-flex justify-content-between align-items-center">

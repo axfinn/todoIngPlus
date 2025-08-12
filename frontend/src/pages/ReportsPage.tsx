@@ -160,327 +160,329 @@ const ReportsPage: React.FC = () => {
   // const isPolishing = loading; // unused
   
   return (
-    <div className="container-fluid">
-      <div className="row">
-        <div className="col-12">
-          <h2 className="my-4">{t('reports.title')}</h2>
-        </div>
-      </div>
-      
-      {/* 报告生成表单 */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-header">
-              <h5 className="mb-0">{t('reports.generateNew')}</h5>
-            </div>
-            <div className="card-body">
-              <div className="row">
-                <div className="col-md-3 mb-3">
-                  <label className="form-label">{t('reports.type')}</label>
-                  <select 
-                    className="form-select"
-                    value={reportType}
-                    onChange={(e) => setReportType(e.target.value as any)}
-                  >
-                    <option value="daily">{t('reports.daily')}</option>
-                    <option value="weekly">{t('reports.weekly')}</option>
-                    <option value="monthly">{t('reports.monthly')}</option>
-                  </select>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <label className="form-label">{t('reports.date')}</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={reportDate}
-                    onChange={(e) => setReportDate(e.target.value)}
-                  />
-                </div>
-                <div className="col-md-3 mb-3 d-flex align-items-end">
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleGenerateReport}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                        {t('common.loading')}
-                      </>
-                    ) : (
-                      t('reports.generate')
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+    <div className="container-xl py-4 panel-wrap">
+      <div className="panel-content">
+        <div className="row">
+          <div className="col-12">
+            <h2 className="my-4">{t('reports.title')}</h2>
           </div>
         </div>
-      </div>
-      
-      <div className="row">
-        {/* 左侧报告列表 - 响应式调整 */}
-        <div className="col-md-4 reports-sidebar">
-          <div className="card">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <span>{t('reports.list')}</span>
-            </div>
-            <div className="card-body p-0">
-              {reportsLoading ? (
-                <div className="text-center p-3">
-                  <div className="spinner-border" role="status">
-                    <span className="visually-hidden">{t('common.loading')}</span>
+        
+        {/* 报告生成表单 */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-header">
+                <h5 className="mb-0">{t('reports.generateNew')}</h5>
+              </div>
+              <div className="card-body">
+                <div className="row">
+                  <div className="col-md-3 mb-3">
+                    <label className="form-label">{t('reports.type')}</label>
+                    <select 
+                      className="form-select"
+                      value={reportType}
+                      onChange={(e) => setReportType(e.target.value as any)}
+                    >
+                      <option value="daily">{t('reports.daily')}</option>
+                      <option value="weekly">{t('reports.weekly')}</option>
+                      <option value="monthly">{t('reports.monthly')}</option>
+                    </select>
+                  </div>
+                  <div className="col-md-3 mb-3">
+                    <label className="form-label">{t('reports.date')}</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-3 mb-3 d-flex align-items-end">
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleGenerateReport}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          {t('common.loading')}
+                        </>
+                      ) : (
+                        t('reports.generate')
+                      )}
+                    </button>
                   </div>
                 </div>
-              ) : reportsError ? (
-                <div className="alert alert-danger m-3">{reportsError}</div>
-              ) : reports && reports.length > 0 ? (
-                <ul className="list-group list-group-flush">
-                  {reports.map(report => (
-                    <li 
-                      key={report._id} 
-                      className={`list-group-item d-flex justify-content-between align-items-start ${currentReport && currentReport._id === report._id ? 'active' : ''}`}
-                    >
-                      <div 
-                        className="flex-grow-1 cursor-pointer"
-                        onClick={() => handleSelectReport(report._id)}
-                      >
-                        <div className="fw-bold">
-                          {report.title}
-                        </div>
-                        <div className="small text-muted">
-                          {new Date(report.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <button 
-                        className="btn btn-outline-danger btn-sm ms-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteReport(report._id);
-                        }}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="p-3 text-center text-muted">
-                  {t('reports.noReports')}
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
         
-        {/* 右侧报告详情 - 响应式调整 */}
-        <div className="col-md-8">
-          {currentReport ? (
+        <div className="row">
+          {/* 左侧报告列表 - 响应式调整 */}
+          <div className="col-md-4 reports-sidebar">
             <div className="card">
-              <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 flex-wrap">
-                <h5 className="mb-2 mb-md-0">{currentReport.title}</h5>
-                <div className="d-flex flex-wrap gap-2">
-                  <div className="btn-group btn-group-sm" role="group">
-                    <button 
-                      type="button" 
-                      className={`btn btn-outline-secondary ${previewMode === 'text' ? 'active' : ''}`}
-                      onClick={() => setPreviewMode('text')}
-                    >
-                      {t('reports.textPreview')}
-                    </button>
-                    <button 
-                      type="button" 
-                      className={`btn btn-outline-secondary ${previewMode === 'preview' ? 'active' : ''}`}
-                      onClick={() => setPreviewMode('preview')}
-                    >
-                      {t('reports.preview')}
-                    </button>
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <span>{t('reports.list')}</span>
+              </div>
+              <div className="card-body p-0">
+                {reportsLoading ? (
+                  <div className="text-center p-3">
+                    <div className="spinner-border" role="status">
+                      <span className="visually-hidden">{t('common.loading')}</span>
+                    </div>
                   </div>
-                  <div className="btn-group btn-group-sm" role="group">
-                    <button 
-                      type="button" 
-                      className="btn btn-outline-primary"
-                      onClick={() => handleExportReport('text')}
-                    >
-                      <i className="bi bi-filetype-txt me-1"></i>
-                      <span className="d-none d-sm-inline">{t('reports.exportText')}</span>
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-outline-primary"
-                      onClick={() => handleExportReport('markdown')}
-                    >
-                      <i className="bi bi-filetype-md me-1"></i>
-                      <span className="d-none d-sm-inline">{t('reports.exportMarkdown')}</span>
-                    </button>
+                ) : reportsError ? (
+                  <div className="alert alert-danger m-3">{reportsError}</div>
+                ) : reports && reports.length > 0 ? (
+                  <ul className="list-group list-group-flush">
+                    {reports.map(report => (
+                      <li 
+                        key={report._id} 
+                        className={`list-group-item d-flex justify-content-between align-items-start ${currentReport && currentReport._id === report._id ? 'active' : ''}`}
+                      >
+                        <div 
+                          className="flex-grow-1 cursor-pointer"
+                          onClick={() => handleSelectReport(report._id)}
+                        >
+                          <div className="fw-bold">
+                            {report.title}
+                          </div>
+                          <div className="small text-muted">
+                            {new Date(report.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <button 
+                          className="btn btn-outline-danger btn-sm ms-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteReport(report._id);
+                          }}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="p-3 text-center text-muted">
+                    {t('reports.noReports')}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* 右侧报告详情 - 响应式调整 */}
+          <div className="col-md-8">
+            {currentReport ? (
+              <div className="card">
+                <div className="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 flex-wrap">
+                  <h5 className="mb-2 mb-md-0">{currentReport.title}</h5>
+                  <div className="d-flex flex-wrap gap-2">
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button 
+                        type="button" 
+                        className={`btn btn-outline-secondary ${previewMode === 'text' ? 'active' : ''}`}
+                        onClick={() => setPreviewMode('text')}
+                      >
+                        {t('reports.textPreview')}
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`btn btn-outline-secondary ${previewMode === 'preview' ? 'active' : ''}`}
+                        onClick={() => setPreviewMode('preview')}
+                      >
+                        {t('reports.preview')}
+                      </button>
+                    </div>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button 
+                        type="button" 
+                        className="btn btn-outline-primary"
+                        onClick={() => handleExportReport('text')}
+                      >
+                        <i className="bi bi-filetype-txt me-1"></i>
+                        <span className="d-none d-sm-inline">{t('reports.exportText')}</span>
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn btn-outline-primary"
+                        onClick={() => handleExportReport('markdown')}
+                      >
+                        <i className="bi bi-filetype-md me-1"></i>
+                        <span className="d-none d-sm-inline">{t('reports.exportMarkdown')}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="card-body">
-                {/* 统计信息 - 响应式调整 */}
-                <div className="row mb-4">
-                  <div className="col-12">
-                    <h6>{t('reports.statistics')}</h6>
-                    <div className="row">
-                      <div className="col-sm-6 col-md-4 mb-2">
-                        <div className="card bg-light">
-                          <div className="card-body p-2 text-center">
-                            <div className="small text-muted">{t('reports.totalTasks')}</div>
-                            <div className="fw-bold">{currentReport.statistics.totalTasks}</div>
+                
+                <div className="card-body">
+                  {/* 统计信息 - 响应式调整 */}
+                  <div className="row mb-4">
+                    <div className="col-12">
+                      <h6>{t('reports.statistics')}</h6>
+                      <div className="row">
+                        <div className="col-sm-6 col-md-4 mb-2">
+                          <div className="card bg-light">
+                            <div className="card-body p-2 text-center">
+                              <div className="small text-muted">{t('reports.totalTasks')}</div>
+                              <div className="fw-bold">{currentReport.statistics.totalTasks}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="col-sm-6 col-md-4 mb-2">
-                        <div className="card bg-light">
-                          <div className="card-body p-2 text-center">
-                            <div className="small text-muted">{t('reports.completedTasks')}</div>
-                            <div className="fw-bold">{currentReport.statistics.completedTasks}</div>
+                        <div className="col-sm-6 col-md-4 mb-2">
+                          <div className="card bg-light">
+                            <div className="card-body p-2 text-center">
+                              <div className="small text-muted">{t('reports.completedTasks')}</div>
+                              <div className="fw-bold">{currentReport.statistics.completedTasks}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="col-sm-6 col-md-4 mb-2">
-                        <div className="card bg-light">
-                          <div className="card-body p-2 text-center">
-                            <div className="small text-muted">{t('reports.inProgressTasks')}</div>
-                            <div className="fw-bold">{currentReport.statistics.inProgressTasks}</div>
+                        <div className="col-sm-6 col-md-4 mb-2">
+                          <div className="card bg-light">
+                            <div className="card-body p-2 text-center">
+                              <div className="small text-muted">{t('reports.inProgressTasks')}</div>
+                              <div className="fw-bold">{currentReport.statistics.inProgressTasks}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="col-sm-6 col-md-4 mb-2">
-                        <div className="card bg-light">
-                          <div className="card-body p-2 text-center">
-                            <div className="small text-muted">{t('reports.overdueTasks')}</div>
-                            <div className="fw-bold">{currentReport.statistics.overdueTasks}</div>
+                        <div className="col-sm-6 col-md-4 mb-2">
+                          <div className="card bg-light">
+                            <div className="card-body p-2 text-center">
+                              <div className="small text-muted">{t('reports.overdueTasks')}</div>
+                              <div className="fw-bold">{currentReport.statistics.overdueTasks}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="col-sm-6 col-md-4 mb-2">
-                        <div className="card bg-light">
-                          <div className="card-body p-2 text-center">
-                            <div className="small text-muted">{t('reports.completionRate')}</div>
-                            <div className="fw-bold">{currentReport.statistics.completionRate}%</div>
+                        <div className="col-sm-6 col-md-4 mb-2">
+                          <div className="card bg-light">
+                            <div className="card-body p-2 text-center">
+                              <div className="small text-muted">{t('reports.completionRate')}</div>
+                              <div className="fw-bold">{currentReport.statistics.completionRate}%</div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* AI润色功能 - 响应式调整 */}
-                <div className="row mb-4">
-                  <div className="col-12">
-                    <div className="card">
-                      <div className="card-body">
-                        <h6 className="card-title">{t('reports.aiPolish')}</h6>
-                        
-                        {/* AI服务提供商选择 */}
-                        <div className="mb-3">
-                          <label className="form-label">{t('reports.aiProvider')}</label>
-                          <select
-                            className="form-select"
-                            value={provider}
-                            onChange={(e) => setProvider(e.target.value)}
-                          >
-                            <option value="openai">OpenAI</option>
-                            <option value="custom">Custom AI Service</option>
-                          </select>
-                        </div>
-                        
-                        {/* 模型选择 (仅OpenAI) */}
-                        {provider === 'openai' && (
+                  
+                  {/* AI润色功能 - 响应式调整 */}
+                  <div className="row mb-4">
+                    <div className="col-12">
+                      <div className="card">
+                        <div className="card-body">
+                          <h6 className="card-title">{t('reports.aiPolish')}</h6>
+                          
+                          {/* AI服务提供商选择 */}
                           <div className="mb-3">
-                            <label className="form-label">{t('reports.model')}</label>
+                            <label className="form-label">{t('reports.aiProvider')}</label>
                             <select
                               className="form-select"
-                              value={model}
-                              onChange={(e) => setModel(e.target.value)}
+                              value={provider}
+                              onChange={(e) => setProvider(e.target.value)}
                             >
-                              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                              <option value="gpt-4">GPT-4</option>
-                              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                              <option value="openai">OpenAI</option>
+                              <option value="custom">Custom AI Service</option>
                             </select>
                           </div>
-                        )}
-                        
-                        {/* API URL输入 */}
-                        <div className="mb-3">
-                          <label className="form-label">{t('reports.apiUrl')}</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder={provider === 'openai' 
-                              ? 'https://api.openai.com/v1/chat/completions' 
-                              : 'https://your-custom-ai-api.com/endpoint'}
-                            value={apiUrl}
-                            onChange={(e) => setApiUrl(e.target.value)}
-                          />
-                        </div>
-                        
-                        {/* API Key输入 */}
-                        <div className="mb-3">
-                          <label className="form-label">{t('reports.apiKey')}</label>
-                          <input
-                            type="password"
-                            className="form-control"
-                            placeholder={t('reports.enterApiKey')}
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                          />
-                        </div>
-                        
-                        <button 
-                          className="btn btn-success d-flex align-items-center justify-content-center"
-                          onClick={handlePolishReport}
-                          disabled={loading}
-                        >
-                          {loading ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                              {t('reports.polishing')}
-                            </>
-                          ) : (
-                            <>
-                              <i className="bi bi-stars me-1"></i>
-                              {t('reports.polish')}
-                            </>
+                          
+                          {/* 模型选择 (仅OpenAI) */}
+                          {provider === 'openai' && (
+                            <div className="mb-3">
+                              <label className="form-label">{t('reports.model')}</label>
+                              <select
+                                className="form-select"
+                                value={model}
+                                onChange={(e) => setModel(e.target.value)}
+                              >
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                              </select>
+                            </div>
                           )}
-                        </button>
-                        <div className="form-text mt-2">
-                          {t('reports.apiKeyNote')}
+                          
+                          {/* API URL输入 */}
+                          <div className="mb-3">
+                            <label className="form-label">{t('reports.apiUrl')}</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder={provider === 'openai' 
+                                ? 'https://api.openai.com/v1/chat/completions' 
+                                : 'https://your-custom-ai-api.com/endpoint'}
+                              value={apiUrl}
+                              onChange={(e) => setApiUrl(e.target.value)}
+                            />
+                          </div>
+                          
+                          {/* API Key输入 */}
+                          <div className="mb-3">
+                            <label className="form-label">{t('reports.apiKey')}</label>
+                            <input
+                              type="password"
+                              className="form-control"
+                              placeholder={t('reports.enterApiKey')}
+                              value={apiKey}
+                              onChange={(e) => setApiKey(e.target.value)}
+                            />
+                          </div>
+                          
+                          <button 
+                            className="btn btn-success d-flex align-items-center justify-content-center"
+                            onClick={handlePolishReport}
+                            disabled={loading}
+                          >
+                            {loading ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                {t('reports.polishing')}
+                              </>
+                            ) : (
+                              <>
+                                <i className="bi bi-stars me-1"></i>
+                                {t('reports.polish')}
+                              </>
+                            )}
+                          </button>
+                          <div className="form-text mt-2">
+                            {t('reports.apiKeyNote')}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* 报告内容 - 响应式调整 */}
-                <div className="row">
-                  <div className="col-12">
-                    <h6>{t('reports.content')}</h6>
-                    {previewMode === 'preview' ? (
-                      <div className="border rounded p-3 bg-light">
-                        <div dangerouslySetInnerHTML={{ __html: renderMarkdown(currentReport.polishedContent || currentReport.content) }} />
-                      </div>
-                    ) : (
-                      <div className="border rounded p-3 bg-light">
-                        <pre className="mb-0" style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                          {currentReport.polishedContent || currentReport.content}
-                        </pre>
-                      </div>
-                    )}
+                  
+                  {/* 报告内容 - 响应式调整 */}
+                  <div className="row">
+                    <div className="col-12">
+                      <h6>{t('reports.content')}</h6>
+                      {previewMode === 'preview' ? (
+                        <div className="border rounded p-3 bg-light">
+                          <div dangerouslySetInnerHTML={{ __html: renderMarkdown(currentReport.polishedContent || currentReport.content) }} />
+                        </div>
+                      ) : (
+                        <div className="border rounded p-3 bg-light">
+                          <pre className="mb-0" style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+                            {currentReport.polishedContent || currentReport.content}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="card">
-              <div className="card-body text-center">
-                <p className="text-muted">{t('reports.selectReport')}</p>
+            ) : (
+              <div className="card">
+                <div className="card-body text-center">
+                  <p className="text-muted">{t('reports.selectReport')}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
