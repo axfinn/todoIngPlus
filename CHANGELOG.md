@@ -1,5 +1,37 @@
 # TodoIng 变更日志
 
+## [0.0.3] - 2025-08-12
+
+### ✨ 前端
+
+- 新增 顶部导航 背景设置下拉：支持随机更换背景图（预加载后再切换，含加载中状态）。
+- 统一主要页面内容宽度：Dashboard / Events / Reminders / Reports 使用 container-xl 和 panel-wrap/panel-content 结构，视觉一致。
+- 背景模糊强度本地持久化（localStorage ui.bgBlur）继续沿用，增加刷新后保持；换图按钮使用高随机种子避免缓存复用。
+
+### 🧩 后端 / 通用（来自 dev 合并）
+
+- 延续 repository 架构：event / reminder / task / report 仓储接口调整与补充。
+- ReminderRepository 扩展（Preview / Pending / ToggleActive 等）继续迭代；事件推进后提醒级联重排逻辑保持。
+
+### 🔧 技术细节
+
+- 背景管理：抽象 loadRandomBackground，预加载完成再注入 body::before；失败允许重试。
+- CSS 变量：--app-bg-image / --app-bg-blur 持续作为主题层；刷新背景仅修改变量不触发布局。
+
+### 📄 文档
+
+- 更新 CHANGELOG 记录背景动态切换与布局统一改动。
+
+### 🚧 Roadmap 续列
+
+- UserRepository 抽象与 scheduler 脱耦。
+- Prometheus 指标 / Tracing。
+- Swagger 覆盖完善（显式引用 handlers 或集中注册）。
+- 高级循环与批量重算 API。
+- Repository 级单元测试（Advance/Preview/Pending 边界）。
+
+---
+
 ## [0.0.2] - 2025-08-11
 
 ### 🚀 新增
