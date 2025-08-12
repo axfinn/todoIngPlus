@@ -1,7 +1,6 @@
-# TodoIng Plus v0.0.3
+# TodoIng Plus v0.0.4
 
 <!-- v0.0.3: 前端支持随机更换背景 + container-xl 布局统一；详见 CHANGELOG.md -->
-
 <!-- v0.0.2: 引入 Repository 层 (Event/Reminder) + Reminder Preview & Immediate Test + Unified 聚合改造，详见 CHANGELOG.md -->
 
 ![Dashboard](./img/dashboard.png)
@@ -104,6 +103,18 @@ Star / Issue / PR 也是很大的鼓励。
 ## 🧾 License
 
 MIT © 2025 axfinn
+
+## 📦 0.0.4 发布说明 (2025-08-12)
+
+补丁版本，修复以下问题：
+
+- 修复任务列表 / 时间线中评论的时间显示错误（原显示为任务最后更新时间，现正确显示评论创建时间）
+- 后端更新：保留每条评论原始 createdAt（支持前端传入 RFC3339 时间）
+- 前端更新：新增评论仅提交 comments 字段，避免无关字段覆盖
+
+升级提示：仅为显示逻辑修复，无需数据迁移。
+
+---
 
 ## 📦 0.0.1 发布说明
 

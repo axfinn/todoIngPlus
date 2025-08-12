@@ -72,6 +72,7 @@ interface UpdateTaskFields {
   assignee?: string;
   deadline?: string | null;
   scheduledDate?: string | null;
+  comments?: TaskComment[]; // allow updating comments list
 }
 
 export const updateTask = createAsyncThunk<Task, { _id: string } & UpdateTaskFields, { rejectValue: string }>(

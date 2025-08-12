@@ -97,10 +97,17 @@ func (d *TaskDeps) CreateTask(w http.ResponseWriter, r *http.Request) {
 	// 处理评论数据，确保兼容原有格式
 	for _, c := range req.Comments {
 		if strings.TrimSpace(c.Text) != "" {
+			// 默认使用当前时间；如果前端传入了 RFC3339 格式的 CreatedAt 则解析保留
+			cts := now
+			if c.CreatedAt != "" {
+				if parsed, err := time.Parse(time.RFC3339, c.CreatedAt); err == nil {
+					cts = parsed
+				}
+			}
 			comment := bson.M{
 				"text":      c.Text,
 				"createdBy": uid,
-				"createdAt": now,
+				"createdAt": cts,
 			}
 			doc["comments"] = append(doc["comments"].([]bson.M), comment)
 		}
@@ -264,12 +271,17 @@ func (d *TaskDeps) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	if req.ScheduledDate != nil {
 		update["scheduledDate"] = req.ScheduledDate
 	}
-	if len(req.Comments) > 0 { // replace comments
-		now := time.Now()
+	if len(req.Comments) > 0 { // replace comments, 尽量保留各自 createdAt
 		comments := make([]bson.M, 0, len(req.Comments))
 		for _, c := range req.Comments {
 			if strings.TrimSpace(c.Text) != "" {
-				comments = append(comments, bson.M{"text": c.Text, "createdBy": uid, "createdAt": now})
+				cts := time.Now()
+				if c.CreatedAt != "" {
+					if parsed, err := time.Parse(time.RFC3339, c.CreatedAt); err == nil {
+						cts = parsed
+					}
+				}
+				comments = append(comments, bson.M{"text": c.Text, "createdBy": uid, "createdAt": cts})
 			}
 		}
 		update["comments"] = comments
