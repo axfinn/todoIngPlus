@@ -43,18 +43,17 @@ const App: React.FC = () => {
   const [githubError, setGithubError] = useState(false);
   // 背景图（纯展示用，不影响交互，放置在模糊层）
   const [bgUrl, setBgUrl] = useState<string>('');
-  useEffect(()=> {
-    const pool = [
-      'https://picsum.photos/1600/900?random=11',
-      'https://picsum.photos/1600/900?random=12',
-      'https://picsum.photos/1600/900?random=13'
-    ];
-    const url = pool[Math.floor(Math.random()*pool.length)];
+  const [bgLoading, setBgLoading] = useState(false); // 背景加载状态
+  const loadRandomBackground = () => {
+    setBgLoading(true);
+    // 使用更大范围的随机数确保刷新时图片不同（picsum 自带随机种子）
+    const candidate = `https://picsum.photos/1600/900?random=${Math.floor(Math.random()*10000)}`;
     const img = new Image();
-    img.onload = () => setBgUrl(url);
-    img.src = url;
-    console.log('[BG] loading', url);
-  }, []);
+    img.onload = () => { setBgUrl(candidate); setBgLoading(false); console.log('[BG] loaded', candidate); };
+    img.onerror = () => { console.warn('[BG] load failed, retrying'); setBgLoading(false); };
+    img.src = candidate;
+  };
+  useEffect(()=> { loadRandomBackground(); }, []);
 
   // 将背景注入到 body::before
   useEffect(()=> {
@@ -262,10 +261,16 @@ const App: React.FC = () => {
                       <button className="btn btn-outline-light btn-sm dropdown-toggle" data-bs-toggle="dropdown">
                         <i className="bi bi-image"/> 背景
                       </button>
-                      <div className="dropdown-menu dropdown-menu-end p-3 small" style={{minWidth:240}}>
-                        <label className="form-label d-flex justify-content-between mb-1">
-                          <span>模糊</span><span className="badge bg-secondary">{bgBlur}px</span>
-                        </label>
+                      <div className="dropdown-menu dropdown-menu-end p-3 small" style={{minWidth:260}}>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <label className="form-label mb-0 d-flex align-items-center gap-2">
+                            <span>模糊</span><span className="badge bg-secondary">{bgBlur}px</span>
+                          </label>
+                          <button type="button" className="btn btn-sm btn-outline-secondary d-flex align-items-center" disabled={bgLoading} onClick={loadRandomBackground} title="换一张">
+                            {bgLoading ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <i className="bi bi-arrow-clockwise"/>}
+                            <span className="ms-1">{bgLoading? '加载中':'换背景'}</span>
+                          </button>
+                        </div>
                         <input type="range" min={4} max={60} step={1} value={bgBlur} className="form-range" onChange={e=> setBgBlur(parseInt(e.target.value,10))} />
                         <div className="d-flex gap-2 flex-wrap mt-2">
                           <button type="button" className="btn btn-sm btn-outline-secondary" onClick={()=> setBgBlur(10)}>浅</button>

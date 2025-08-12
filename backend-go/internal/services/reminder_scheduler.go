@@ -8,8 +8,8 @@ import (
 
 	"github.com/axfinn/todoIngPlus/backend-go/internal/email"
 	"github.com/axfinn/todoIngPlus/backend-go/internal/models"
-	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 	nHub "github.com/axfinn/todoIngPlus/backend-go/internal/notifications"
+	"github.com/axfinn/todoIngPlus/backend-go/internal/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

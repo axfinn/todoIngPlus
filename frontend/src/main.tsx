@@ -5,6 +5,9 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 import './app/i18n';
 
+// 引入全局样式（包含 body::before 背景 / 卡片 / 动画 等）
+import './index.css';
+
 // 引入Bootstrap JavaScript功能
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 

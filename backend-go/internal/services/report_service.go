@@ -17,7 +17,9 @@ type ReportService struct {
 	repo repository.ReportRepository
 }
 
-func NewReportService(db *mongo.Database) *ReportService { return &ReportService{db: db, repo: repository.NewReportRepository(db)} }
+func NewReportService(db *mongo.Database) *ReportService {
+	return &ReportService{db: db, repo: repository.NewReportRepository(db)}
+}
 
 // Generate 聚合并持久化报表（不改变外部 proto 接口）
 func (s *ReportService) Generate(ctx context.Context, userID string, in models.Report, start, end time.Time) (*models.Report, error) {
